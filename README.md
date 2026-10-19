@@ -1,6 +1,6 @@
 # Roadster Rush
 
-A 3D portrait lane runner. Steer a white rocket roadster through a neon space-port city.
+A 3D portrait lane runner. Steer a pearl-white rocket roadster across a neon purple moon: crater plains, a hyperloop tunnel, a crater spaceport and a sky bridge.
 
 **How to play**
 - Tap ▶ to start.
@@ -9,4 +9,6 @@ A 3D portrait lane runner. Steer a white rocket roadster through a neon space-po
 - Drive through power-ups: rocket boost (fires the 4 rear thrusters), shield, magnet, x2.
 - Keyboard: arrow keys or WASD.
 
-One self-contained offline HTML file. Made for kids and families: no ads, accounts, purchases, tracking or network calls. Your best score is saved only on your device.
+**Install / offline:** open the site on a phone and use "Add to Home Screen". After the first visit it also works offline (a small service worker caches only this site's own files).
+
+Made for kids and families: no ads, accounts, purchases, tracking or network calls. Your best score is saved only on your device.

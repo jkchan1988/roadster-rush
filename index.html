@@ -2,9 +2,10 @@
 <html lang="en"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; connect-src 'none'; media-src 'none'; font-src 'none'; frame-src 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob: 'self'; manifest-src 'self'; worker-src 'self'; connect-src 'none'; media-src 'none'; font-src 'none'; frame-src 'none'; form-action 'none'">
 <title>Roadster Rush</title>
 <meta name="theme-color" content="#2a1850">
+<link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Roadster Rush">
 <style>
@@ -43,7 +44,12 @@ button{font:inherit;color:#fff;border:0;cursor:pointer;touch-action:manipulation
 .arrows{position:absolute;left:50%;top:58%;transform:translate(-50%,-50%);width:240px;height:240px;opacity:.55}
 .big-score{font-size:64px;font-weight:900;text-shadow:0 5px 0 #3a1d8a}
 .burst{font-size:30px;font-weight:900;color:#ffd34d;animation:pulse .6s ease-in-out infinite;text-shadow:0 3px 0 #6b2bd1}
-#flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .25s}
+#flash{position:fixed;inset:0;background:radial-gradient(circle at 50% 70%,rgba(255,214,150,.0),rgba(255,140,190,.9));opacity:0;pointer-events:none}
+#over:not(.hidden){animation:rrfade .5s cubic-bezier(.2,.8,.3,1) both}
+#over:not(.hidden)>*{animation:rrpop .55s cubic-bezier(.3,1.5,.5,1) both}
+@keyframes rrfade{from{opacity:0}to{opacity:1}}
+@keyframes rrpop{from{transform:scale(.9)}to{transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){#over:not(.hidden),#over:not(.hidden)>*{animation-duration:.01s}}
 #pops{position:fixed;left:50%;top:38%;transform:translateX(-50%);pointer-events:none;font-size:40px;font-weight:900;color:#ffd34d;text-shadow:0 3px 0 #6b2bd1}
 .tut{position:fixed;left:50%;top:44%;width:132px;height:132px;margin-left:-66px;border-radius:50%;background:rgba(30,18,64,.6);box-shadow:0 0 0 5px rgba(255,255,255,.85),0 0 40px rgba(127,246,255,.8);display:flex;align-items:center;justify-content:center;pointer-events:none;animation:pulse .7s ease-in-out infinite}
 .tut svg{width:92px;height:92px}.tut.up svg{animation:nudgeU .7s ease-in-out infinite}.tut.down svg{animation:nudgeD .7s ease-in-out infinite}
@@ -3936,7 +3942,9 @@ var RRLogic = (function () {
     HAUL_TOP: 2.6, HAUL_HW: 1.15, RAMP_LEN: 8,
     VIEW: 230, MOVE_K: 0.45,
     MAGNET_T: 10, X2_T: 12, ROCKET_T: 6, SHIELD_T: 25, ROCKET_Y: 7.5,
-    STUMBLE_T: 7,
+    STUMBLE_T: 5.5, /* v4: shorter 'drone is close' window = more forgiving (v3: 7 s) */
+    CRASH_T: 1.0, /* v4: eased slow-motion crash sequence length before the game-over card fades in */
+    STUMBLE_INV: 0.6, /* v4: grace after a side-swipe (v3: 0.35 s) */
     // v3 thrust surge (REQUIREMENTS 'Roadster reference'): the rocket boost ramps like constant thrust instead of a step.
     // THRUST_RAMP = the Thrust trim's reported ~0.85 s 0-60 time (Cern Basher spec summary); BOOST_K = +25% speed; BOOST_DECAY = ease-off time.
     BOOST_K: 1.25, THRUST_RAMP: 0.85, BOOST_DECAY: 0.6
@@ -4121,7 +4129,7 @@ var RRLogic = (function () {
     this.lane = this.prevLane; this.stumbles++;
     if (this.stumbleT > 0 && this.shieldT <= 0) { this.state = 'over'; this.reason = 'caught'; this.chase = 1; this.ev('caught'); return; }
     if (this.stumbleT > 0 && this.shieldT > 0) { this.shieldT = 0; this.ev('shieldpop', 'stumble'); }
-    this.stumbleT = C.STUMBLE_T; this.chase = 1; this.invulnT = 0.35; this.combo = 0; this.comboT = 0; this.ev('stumble');
+    this.stumbleT = C.STUMBLE_T; this.chase = 1; this.invulnT = C.STUMBLE_INV; this.combo = 0; this.comboT = 0; this.ev('stumble');
   };
   P.step = function (dt) {
     if (this.state !== 'play') return;
@@ -4288,7 +4296,24 @@ var RRLogic = (function () {
     for (i = 0; i < ACTS.length; i++) for (j = 1; j < ACTS.length; j++) { sc = evalPlan(game, [ACTS[i], ACTS[j]], T); if (sc > bestScore) { bestScore = sc; best = ACTS[i]; } }
     return best;
   }
-  return { C: C, Game: Game, bot: bot, laneX: laneX, rng: rng };
+  // v4 crash feel: one pure, deterministic curve drives slow-motion, camera ease-out, squash-bounce and the soft tint.
+  // No random numbers (v3 used a random camera shake), every channel is continuous in t, and all settle by CRASH_T.
+  function smooth(a) { a = Math.max(0, Math.min(1, a)); return a * a * (3 - 2 * a); }
+  function crashFx(t) {
+    t = Math.max(0, t); var e = smooth(t / 0.9), d = Math.exp(-4.5 * t);
+    var sy = 1 - 0.17 * d * Math.sin(13 * t);
+    return {
+      ts: 0.3 + 0.7 * smooth((t - 0.1) / 0.8), // time scale: 0.3x slow-mo easing back to 1x
+      back: 2.4 * e, up: 1.1 * e, // camera eases in-out (zero start speed: no jolt), pulls back and up, never shakes
+      sy: sy, sxz: 1 + 0.55 * (1 - sy), // bouncy squash & stretch, roughly volume-preserving
+      hop: 0.32 * Math.abs(Math.sin(6.5 * t)) * Math.exp(-3.2 * t), // two small bounces
+      knock: 1.1 * e, // car is nudged back off the obstacle
+      tint: 0.2 * Math.exp(-6 * t), // soft warm tint instead of a white flash
+      done: t >= C.CRASH_T
+    };
+  }
+  function wobble(t) { t = Math.max(0, t); var d = Math.exp(-4 * t); return { roll: 0.13 * d * Math.sin(16 * t), sway: 0.09 * d * Math.sin(10 * t) }; }
+  return { C: C, Game: Game, bot: bot, laneX: laneX, rng: rng, crashFx: crashFx, wobble: wobble };
 })();
 /* global module */
 if (typeof module !== 'undefined') module.exports = RRLogic;
@@ -4329,7 +4354,7 @@ var RRAudio = (function () {
     power: function (t) { [523, 659, 784, 1047].forEach(function (f, i) { tone(f, t + i * 0.07, 0.18, 'triangle', 0.2); }); },
     shieldpop: function (t) { tone(900, t, 0.25, 'sine', 0.3, 200); noise(t, 0.3, 0.2, 'bandpass', 1800); },
     stumble: function (t) { tone(300, t, 0.12, 'square', 0.12, 180); tone(220, t + 0.1, 0.18, 'square', 0.1, 160); },
-    crash: function (t) { noise(t, 0.6, 0.5, 'lowpass', 2200, 200); tone(180, t, 0.5, 'sawtooth', 0.18, 50); },
+    crash: function (t) { /* v4: soft cartoon 'bonk-boing' (v3 was a harsh saw-wave buzz + loud noise) */ noise(t, 0.22, 0.16, 'lowpass', 900, 250); tone(520, t, 0.22, 'sine', 0.26, 190); tone(330, t + 0.16, 0.18, 'triangle', 0.18, 440); tone(440, t + 0.32, 0.26, 'triangle', 0.14, 660); },
     caught: function (t) { [660, 550, 440].forEach(function (f, i) { tone(f, t + i * 0.12, 0.2, 'triangle', 0.18); }); },
     newbest: function (t) { [523, 659, 784, 1047, 1319].forEach(function (f, i) { tone(f, t + i * 0.09, 0.3, 'triangle', 0.22); tone(f * 2, t + i * 0.09, 0.2, 'sine', 0.06); }); },
     edge: function (t) { tone(200, t, 0.08, 'sine', 0.12); },
@@ -4569,10 +4594,11 @@ var RRCar = (function () {
   var DECK = curve([[-0.92, 0.83], [-1.4, 0.85], [-1.8, 0.86], [-2.15, 0.85]]);                       // centre deck between the ridges (rear photos; height GUESS)
   var BOT = curve([[-2.15, 0.33], [-1.9, 0.2], [-1.5, 0.15], [1.6, 0.15], [2.0, 0.22], [2.25, 0.36]]);
   var WID = curve([[-2.15, 0.95], [-1.85, 0.99], [-1.4, 1.0], [-0.9, 0.965], [0, 0.94], [0.9, 0.955], [1.42, 0.985], [1.8, 0.94], [2.05, 0.84], [2.25, 0.64]]); // half-width (plan view: GUESS, no top photo)
+  function lin(a, b, x) { return Math.max(0, Math.min(1, (x - a) / (b - a))); }
   function topAt(L, ax) {
     var wf = sm(1.0, 1.25, L), wr = 1 - sm(-1.06, -0.9, L);
     var front = FEN(L) - 0.075 * (1 - sm(0.35, 0.78, ax)) * sm(2.23, 2.0, L) * sm(1.1, 1.4, L); // hood sits below the fender crowns (guess)
-    var rear = DECK(L) + (HAU(L) - DECK(L)) * sm(0.3, 0.6, ax) - 0.2 * sm(0.64, 1.0, ax) * sm(-0.95, -1.3, L); // sharp haunch ridge with an outer facet sloping to the side (rear photos)
+    var rear = DECK(L) + (HAU(L) - DECK(L)) * lin(0.3, 0.56, ax) - 0.2 * lin(0.64, 1.0, ax) * sm(-0.95, -1.3, L); // v4: crisp (piecewise-linear) haunch ridge with a flat outer facet sloping to the side (rear photo)
     return BELT(L) * (1 - wf) * (1 - wr) + front * wf + rear * wr;
   }
   function archY(L) { var y = -1; for (var i = 0; i < 2; i++) { var d = L - WHEELS[i][0]; if (Math.abs(d) < ARCH) y = Math.max(y, WR + Math.sqrt(ARCH * ARCH - d * d) - 0.02); } return y; }
@@ -4636,6 +4662,26 @@ var RRCar = (function () {
     NOZ.forEach(function (x) { var f = new T.CircleGeometry(0.1, 20); K.push([f, [x, 0.24, 2.205], fan]); var bl = new T.BoxGeometry(0.17, 0.018, 0.005); for (var b = 0; b < 3; b++) K.push([bl, [x, 0.24, 2.21, 0, 0, b * Math.PI / 3], dk]); // 4 suction fans (Cern Basher: four 20 kW fans)
       K.push([new T.CircleGeometry(0.042, 16), [x, NOZ_Y, NOZ_Z - 0.03], 0x000000]); });               // nozzle throats
     body.add(new T.Mesh(mergeG(K, true), black));
+    // --- v4 faceted rear (rear photo): flat-shaded planar haunch panels, a dark trapezoid rear window and crisp toon crease highlights
+    var FL = [-0.95, -1.15, -1.45, -1.75, -2.0, -2.12], FA = [0.5, 0.56, 0.78, 0.93], fp = [], fc = [];
+    var TONE = [0.8, 1.0, 0.6]; // v4.1 toon cel tones per facet band (inner slope, top plane, outer slope), so the planes read from the chase camera like the photo's lit/shadowed facets
+    function fv(L, ax, sd) { return [sd * 0.9 * WID(L) * ax, topAt(L, ax) + 0.012, -L]; }
+    [-1, 1].forEach(function (sd) { for (var i = 0; i < FL.length - 1; i++) for (var j = 0; j < FA.length - 1; j++) {
+      var a = fv(FL[i], FA[j], sd), b = fv(FL[i + 1], FA[j], sd), c = fv(FL[i + 1], FA[j + 1], sd), d = fv(FL[i], FA[j + 1], sd);
+      if (sd > 0) fp.push.apply(fp, a.concat(b, c, a, c, d)); else fp.push.apply(fp, a.concat(c, b, a, d, c));
+      var tn = TONE[j] * (i === FL.length - 2 ? 0.85 : 1); for (var q = 0; q < 6; q++) fc.push(tn, tn, tn * 1.02); } });
+    var facG = new T.BufferGeometry(); facG.setAttribute('position', new T.Float32BufferAttribute(fp, 3)); facG.setAttribute('uv', new T.Float32BufferAttribute(new Array(fp.length / 3 * 2).fill(0), 2)); facG.setAttribute('color', new T.Float32BufferAttribute(fc, 3)); facG.computeVertexNormals();
+    var facM = P.clone(); facM.flatShading = true; facM.vertexColors = true; mats.facet = facM; var fm = new T.Mesh(facG, facM); fm.name = 'rearFacets'; fm.castShadow = true; body.add(fm);
+    var wt = 0.92, wb = 1.62, rw = [[-0.47, ROOF(-wt) + 0.014, wt], [0.47, ROOF(-wt) + 0.014, wt], [0.29, ROOF(-wb) + 0.03, wb], [-0.29, ROOF(-wb) + 0.03, wb]], rwG = new T.BufferGeometry();
+    rwG.setAttribute('position', new T.Float32BufferAttribute([].concat(rw[0], rw[3], rw[2], rw[0], rw[2], rw[1]), 3)); rwG.setAttribute('uv', new T.Float32BufferAttribute(new Array(12).fill(0), 2)); rwG.computeVertexNormals();
+    var rwM = new T.MeshPhysicalMaterial({ color: 0x07070a, metalness: 0.2, roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.05 }); var rwm = new T.Mesh(rwG, rwM); rwm.name = 'rearWindow'; body.add(rwm);
+    var CR = [], crM = new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, depthWrite: false });
+    [-1, 1].forEach(function (sd) { for (var i = 0; i < FL.length - 1; i++) { var p0 = fv(FL[i], 0.56, sd), p1 = fv(FL[i + 1], 0.56, sd), dx = p1[0] - p0[0], dy = p1[1] - p0[1], dz = p1[2] - p0[2], len = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      var seg = new T.BoxGeometry(0.02, 0.008, len); seg.lookAt(new T.Vector3(dx, dy, dz)); CR.push([seg, [(p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2 + 0.004, (p0[2] + p1[2]) / 2]]); } });
+    function crease(p0, p1) { var dx = p1[0] - p0[0], dy = p1[1] - p0[1], dz = p1[2] - p0[2], g2 = new T.BoxGeometry(0.014, 0.006, Math.sqrt(dx * dx + dy * dy + dz * dz)); g2.lookAt(new T.Vector3(dx, dy, dz)); CR.push([g2, [(p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2 + 0.004, (p0[2] + p1[2]) / 2]]); }
+    crease(rw[0], rw[3]); crease(rw[1], rw[2]); crease(rw[3], rw[2]); // bright window edges (rear photo)
+    [-1, 1].forEach(function (sd) { for (var i = 0; i < FL.length - 1; i++) crease(fv(FL[i], 0.78, sd), fv(FL[i + 1], 0.78, sd)); crease(fv(-2.0, 0.5, sd), fv(-2.0, 0.93, sd)); }); // v4.1: outer crease + rear-deck break line
+    var crm = new T.Mesh(mergeG(CR), crM); crm.name = 'creaseHighlights'; body.add(crm); // toon-style crisp highlight along each haunch crease
     // --- the 4 rear cold-gas nozzles (own mesh so tests can ray-cast them from behind)
     var nozG = new T.CylinderGeometry(0.055, 0.062, 0.12, 20, 1, true); nozG.rotateX(Math.PI / 2);
     var ring = new T.TorusGeometry(0.058, 0.01, 6, 20), N = [], nozzles = [];
@@ -4646,7 +4692,7 @@ var RRCar = (function () {
     body.add(new T.Mesh(mergeG(TI), ti));
     // --- lights (one draw): full-width tail bar with corner wraps, thin hidden-headlight strip on the nose edge, amber side markers
     var LI = [], red = 0xff1a2a, wht = 0xe8f4ff, amb = 0xff7a10;
-    LI.push([new T.BoxGeometry(1.86, 0.022, 0.02), [0, 0.8, 2.155], red]);
+    LI.push([new T.BoxGeometry(1.86, 0.034, 0.02), [0, 0.8, 2.155], red]); // v4: bolder, more readable tail bar
     [-1, 1].forEach(function (sd) { LI.push([new T.BoxGeometry(0.02, 0.022, 0.16), [sd * 0.94, 0.8, 2.07, 0, sd * 0.25, 0], red]); LI.push([new T.BoxGeometry(0.01, 0.018, 0.12), [sd * 0.985, 0.745, -1.08], amb]); });
     LI.push([new T.BoxGeometry(1.2, 0.012, 0.02), [0, 0.52, -2.255], wht]);
     body.add(new T.Mesh(mergeG(LI, true), lightM));
@@ -4682,7 +4728,8 @@ var RRCar = (function () {
 /* Roadster Rush v1 — Three.js renderer. Reads RRLogic state, never changes gameplay. */
 var RRRender = (function () {
   var T = THREE, C = RRLogic.C;
-  var R = {}, post, renderer, scene, camera, clock = 0, quality = { dpr: 1, shadows: true, level: 0 }, shake = 0;
+  var R = {}, post, renderer, scene, camera, clock = 0, quality = { dpr: 1, shadows: true, level: 0 }; /* v4: random camera shake removed */
+  R.hor = new T.Color(0.86, 0.46, 0.96); // v4: one shared horizon colour for the sky shader, the fog, the terrain and the ridges
   var car, carBody, wheels = [], nozzleGlow, plumes = [], shieldMesh, lightBarGlow, tailGlow, drone, droneProps;
   var I = {}; // instanced meshes
   var arches, partsSmoke, partsSpark, dummy = new T.Object3D(), col = new T.Color();
@@ -4741,16 +4788,70 @@ var RRRender = (function () {
     return g;
   }
 
+  // ---------- v4 moon/Mars landscape (v3 playtest: horizon "choppy and full of artifacts") ----------
+  // Root cause in v3 (measured by test/horizon.js): the instanced city towers. Their dense lit-window emissive texture
+  // shimmered at distance, they recycled with random offsets (popping), the fog colour (#9a5fb8) did not match the sky's
+  // horizon colour (so fogged silhouettes and the ground plane's far edge read as hard bands), and the spaceport rockets
+  // stood right beside the road. v4 replaces all of that with analytic, texture-free geometry:
+  //  - ground: one static-topology grid that follows the camera in whole-cell snaps (vertices always sample the same world
+  //    points: no swimming), height and craters from a pure function of world x/z, Tron grid + crater rim lines drawn
+  //    analytically with fwidth() anti-aliasing and faded out before they get sub-pixel (no moire, no mip shimmer);
+  //  - 3 ridge layers + the planet + stars are a backdrop that moves with the camera (no LOD, no popping);
+  //  - fog colour == sky horizon colour, always, so everything dissolves into the haze smoothly.
+  var TERR_CELL = 8, TERR_N = 150; // 1200 m square, 8 m vertices
+  var GLSL_TERR = [
+    'uniform float uCorr;',
+    'float h21(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}',
+    'float vnoise(vec2 p){vec2 i=floor(p),f=fract(p);vec2 u=f*f*(3.0-2.0*f);return mix(mix(h21(i),h21(i+vec2(1,0)),u.x),mix(h21(i+vec2(0,1)),h21(i+vec2(1,1)),u.x),u.y);}',
+    // crater in a 72 m cell: returns (height, signed distance to rim in m, rim radius)
+    'vec3 crater(vec2 p){vec2 c=floor(p/72.0);float pr=h21(c+7.1);if(pr<0.42)return vec3(0.0,1e3,1.0);float r=9.0+h21(c+3.3)*20.0;vec2 o=(vec2(h21(c+1.7),h21(c+9.2))-0.5)*(72.0-2.0*r-6.0);vec2 cc=(c+0.5)*72.0+o;float d=length(p-cc);',
+    ' float x=d/r;float bowl=x<1.0?-0.32*r*(1.0-x*x):0.0;float rim=0.09*r*exp(-pow((x-1.0)/0.22,2.0));return vec3(bowl+rim,d-r,r);}',
+    'float corr(vec2 p){return smoothstep(uCorr,uCorr+22.0,abs(p.x));}',
+    'float terrH(vec2 p){float k=corr(p);float hills=(vnoise(p/140.0)*22.0+vnoise(p/55.0)*7.0-9.0)*smoothstep(uCorr+8.0,uCorr+90.0,abs(p.x));return k*(hills+crater(p).x)-0.15;}'
+  ].join('\n');
+  function buildTerrain() {
+    var geo = new T.PlaneGeometry(TERR_CELL * TERR_N, TERR_CELL * TERR_N, TERR_N, TERR_N); geo.rotateX(-Math.PI / 2);
+    var mat = new T.ShaderMaterial({
+      uniforms: { uHor: { value: R.hor }, uFogN: { value: 70 }, uFogF: { value: 300 }, uCorr: { value: C.LANE_W * 1.5 + 3.5 }, uBase: { value: new T.Color(0x3c2470) }, uGrid: { value: new T.Color(0x7ef9ff) }, uRim: { value: new T.Color(0xff6ad5) } },
+      vertexShader: GLSL_TERR + '\nvarying vec3 vW;varying vec3 vN;void main(){vec4 w=modelMatrix*vec4(position,1.0);w.y=terrH(w.xz);float e=1.5;vN=normalize(vec3(terrH(w.xz-vec2(e,0.0))-terrH(w.xz+vec2(e,0.0)),2.0*e,terrH(w.xz-vec2(0.0,e))-terrH(w.xz+vec2(0.0,e))));vW=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}',
+      fragmentShader: GLSL_TERR + '\nuniform vec3 uHor,uBase,uGrid,uRim;uniform float uFogN,uFogF;varying vec3 vW;varying vec3 vN;' +
+        'float aaLine(float coord,float halfW){float fw=max(fwidth(coord),1e-4);float d=abs(fract(coord-0.5)-0.5);return (1.0-smoothstep(halfW-fw,halfW+fw,d*1.0))*(1.0-smoothstep(0.08,0.32,fw));}' + // fades before sub-pixel
+        'void main(){vec3 n=normalize(vN);float lit=0.55+0.6*clamp(dot(n,normalize(vec3(-0.4,0.8,0.45))),0.0,1.0);vec3 col=uBase*lit;' +
+        'vec2 g=vW.xz/24.0;float k=corr(vW.xz);float gl=max(aaLine(g.x,0.02),aaLine(g.y,0.02))*k;col+=uGrid*gl*0.45;' +
+        'vec3 cr=crater(vW.xz);float rw=max(fwidth(cr.y),1e-3);float rl=(1.0-smoothstep(0.35-rw,0.35+rw,abs(cr.y)))*(1.0-smoothstep(0.6,2.4,rw))*k;col+=uRim*rl*1.3;' +
+        'float dist=length(vW-cameraPosition);float f=smoothstep(uFogN,uFogF,dist);gl_FragColor=vec4(mix(col,uHor,f),1.0);}'
+    });
+    var m = new T.Mesh(geo, mat); m.frustumCulled = false; m.renderOrder = -2; scene.add(m); R.ground = m;
+    // backdrop ridges: 3 layers, crest = smooth noise of the angle, glowing AA crest line, hazed toward the horizon colour
+    R.ridges = [];
+    [[430, 30, 0.3, 0x2a1658, 0x7ef9ff], [640, 50, 0.45, 0x3a1f74, 0xff6ad5], [880, 78, 0.6, 0x50308c, 0xb8a6ff]].forEach(function (L, li) {
+      var D = L[0], seg = 220, W = D * 3.2, pos = [], edge = [], idx = [];
+      var hf = function (x) { var u = x / W * 6.283 * 3 + li * 11.0; return L[1] * (0.55 + 0.25 * Math.sin(u) + 0.14 * Math.sin(u * 2.7 + 1.3) + 0.06 * Math.sin(u * 6.1 + 0.4)); };
+      for (var s = 0; s <= seg; s++) { var x = -W / 2 + W * s / seg, hy = hf(x); pos.push(x, hy, 0, x, -12, 0); edge.push(0, hy + 12); if (s < seg) { var a = s * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); } }
+      var g2 = new T.BufferGeometry(); g2.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g2.setAttribute('edge', new T.Float32BufferAttribute(edge, 1)); g2.setIndex(idx);
+      var rm = new T.ShaderMaterial({ depthWrite: false, uniforms: { uHor: { value: R.hor }, uBody: { value: new T.Color(L[3]) }, uLine: { value: new T.Color(L[4]) }, uHaze: { value: L[2] } },
+        vertexShader: 'attribute float edge;varying float vE;varying float vY;void main(){vE=edge;vY=position.y;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
+        fragmentShader: 'uniform vec3 uHor,uBody,uLine;uniform float uHaze;varying float vE;varying float vY;void main(){float fw=max(fwidth(vE),1e-3);float line=1.0-smoothstep(fw*0.6,fw*2.2,vE);float glow=exp(-vE/(fw*7.0))*0.35;vec3 body=mix(uBody,uHor,uHaze*(1.0-smoothstep(-10.0,40.0,vY)*0.35));body=mix(body,uHor,uHaze*0.6);gl_FragColor=vec4(body+uLine*(line*1.4+glow),1.0);}' });
+      // drawn far-to-near before the scene, after the sky: depth-tested against nothing nearer (renderOrder)
+      var mesh = new T.Mesh(g2, rm); mesh.frustumCulled = false; mesh.renderOrder = -9 - li * 0.1; /* far layer first (depthWrite off: later = nearer) */ mesh.userData.D = D; scene.add(mesh); R.ridges.push(mesh);
+    });
+  }
+  function placeTerrain(x, y, z) {
+    R.ground.position.set(Math.round(x / TERR_CELL) * TERR_CELL, 0, Math.round(z / TERR_CELL) * TERR_CELL); // whole-cell snap: no vertex swimming
+    var u = R.ground.material.uniforms; u.uFogN.value = scene.fog.near; u.uFogF.value = scene.fog.far;
+    for (var i = 0; i < R.ridges.length; i++) R.ridges[i].position.set(x, 0, z - R.ridges[i].userData.D);
+  }
+
   // ---------- world ----------
   function buildWorld() {
     // sky dome + planet + stars
-    var sky = new T.Mesh(new T.SphereGeometry(900, 32, 16), new T.ShaderMaterial({ side: T.BackSide, depthWrite: false, fog: false, vertexShader: 'varying vec3 v;void main(){v=normalize(position);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}', uniforms: { hor: { value: new T.Color(1.0, 0.55, 0.62) }, mid: { value: new T.Color(0.48, 0.32, 0.85) }, top: { value: new T.Color(0.06, 0.06, 0.25) } }, fragmentShader: 'uniform vec3 hor,mid,top;varying vec3 v;void main(){float h=v.y;vec3 c=mix(hor,mid,smoothstep(0.0,0.18,h));c=mix(c,top,smoothstep(0.18,0.6,h));gl_FragColor=vec4(c,1.);}' }));
+    var sky = new T.Mesh(new T.SphereGeometry(900, 32, 16), new T.ShaderMaterial({ side: T.BackSide, depthWrite: false, fog: false, vertexShader: 'varying vec3 v;void main(){v=normalize(position);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}', uniforms: { hor: { value: R.hor }, mid: { value: new T.Color(0.48, 0.32, 0.85) }, top: { value: new T.Color(0.06, 0.06, 0.25) } }, fragmentShader: 'uniform vec3 hor,mid,top;varying vec3 v;void main(){float h=v.y;vec3 c=mix(hor,mid,smoothstep(0.0,0.18,h));c=mix(c,top,smoothstep(0.18,0.6,h));gl_FragColor=vec4(c,1.);}' }));
     sky.renderOrder = -10; R.sky = sky; scene.add(sky);
-    var sp = new Float32Array(1500 * 3); for (var i = 0; i < 1500; i++) { var th = Math.random() * Math.PI * 2, ph = Math.random() * 0.45 + 0.08; sp[i * 3] = Math.cos(th) * Math.cos(ph) * 800; sp[i * 3 + 1] = Math.sin(ph) * 800; sp[i * 3 + 2] = Math.sin(th) * Math.cos(ph) * 800; }
+    var sp = new Float32Array(1500 * 3); for (var i = 0; i < 1500; i++) { var th = Math.random() * Math.PI * 2, ph = Math.random() * 0.45 + 0.11; sp[i * 3] = Math.cos(th) * Math.cos(ph) * 800; sp[i * 3 + 1] = Math.sin(ph) * 800; sp[i * 3 + 2] = Math.sin(th) * Math.cos(ph) * 800; }
     var sg = new T.BufferGeometry(); sg.setAttribute('position', new T.BufferAttribute(sp, 3));
-    R.stars = new T.Points(sg, new T.PointsMaterial({ color: 0xffffff, size: 2, sizeAttenuation: false, fog: false, transparent: true, opacity: 0.85 })); scene.add(R.stars);
-    var planetTex = canvasTex(256, 256, function (g) { var gr = g.createRadialGradient(100, 90, 10, 128, 128, 128); gr.addColorStop(0, '#ffe2b8'); gr.addColorStop(0.6, '#ff8fb0'); gr.addColorStop(0.97, '#7a4ad8'); gr.addColorStop(1, 'rgba(122,74,216,0)'); g.fillStyle = gr; g.beginPath(); g.arc(128, 128, 126, 0, 7); g.fill(); g.globalAlpha = 0.18; g.fillStyle = '#fff'; for (var k = 0; k < 6; k++) g.fillRect(0, 60 + k * 26, 256, 8); });
-    R.planet = new T.Sprite(new T.SpriteMaterial({ map: planetTex, fog: false, depthWrite: false })); R.planet.scale.set(260, 260, 1); scene.add(R.planet);
+    R.stars = new T.Points(sg, new T.PointsMaterial({ color: 0xffffff, size: 2.5, map: glowTex(), sizeAttenuation: false, fog: false, transparent: true, opacity: 0.9, depthWrite: false })); // v4: soft round stars (no 1-px aliasing) scene.add(R.stars);
+    var planetTex = canvasTex(512, 512, function (g) { var gr = g.createRadialGradient(190, 170, 20, 256, 256, 256); gr.addColorStop(0, '#f6d8ff'); gr.addColorStop(0.45, '#c08ae8'); gr.addColorStop(0.85, '#5a2ea8'); gr.addColorStop(0.985, '#2a1460'); gr.addColorStop(1, 'rgba(42,20,96,0)'); g.fillStyle = gr; g.beginPath(); g.arc(256, 256, 254, 0, 7); g.fill(); g.globalAlpha = 0.22; for (var k = 0; k < 9; k++) { var cx = 120 + ((k * 97) % 280), cy = 140 + ((k * 151) % 240), r = 14 + (k * 13) % 34, cg = g.createRadialGradient(cx, cy, r * 0.2, cx, cy, r); cg.addColorStop(0, 'rgba(40,10,80,0.9)'); cg.addColorStop(0.8, 'rgba(40,10,80,0.4)'); cg.addColorStop(1, 'rgba(255,220,255,0)'); g.fillStyle = cg; g.beginPath(); g.arc(cx, cy, r, 0, 7); g.fill(); } g.globalAlpha = 1; }); // v4: smooth moon, soft craters (no stripes)
+    R.planet = new T.Sprite(new T.SpriteMaterial({ map: planetTex, fog: false, depthWrite: false })); R.planet.scale.set(320, 320, 1); scene.add(R.planet);
     var ringTex = canvasTex(512, 128, function (g) { g.strokeStyle = 'rgba(255,230,255,0.75)'; g.lineWidth = 7; g.beginPath(); g.ellipse(256, 64, 250, 40, 0, 0, 7); g.stroke(); g.strokeStyle = 'rgba(255,200,240,0.4)'; g.lineWidth = 4; g.beginPath(); g.ellipse(256, 64, 230, 34, 0, 0, 7); g.stroke(); });
     R.ring = new T.Sprite(new T.SpriteMaterial({ map: ringTex, fog: false, depthWrite: false, transparent: true })); R.ring.scale.set(560, 140, 1); scene.add(R.ring);
     // road
@@ -4764,20 +4865,10 @@ var RRRender = (function () {
     roadTex.repeat.set(1, 30);
     var roadM = new T.MeshStandardMaterial({ map: roadTex, roughness: 0.55, metalness: 0.2, emissive: 0xffffff, emissiveMap: roadTex, emissiveIntensity: 0.35 });
     road = new T.Mesh(new T.PlaneGeometry(C.LANE_W * 3 + 0.6, 360), roadM); road.rotation.x = -Math.PI / 2; road.receiveShadow = true; scene.add(road);
-    var ground = new T.Mesh(new T.PlaneGeometry(400, 400), new T.MeshStandardMaterial({ color: 0x1c1838, roughness: 0.9 })); ground.rotation.x = -Math.PI / 2; ground.position.y = -0.05; R.ground = ground; scene.add(ground);
+    buildTerrain();
     // neon rails
     var railM = new T.MeshBasicMaterial({ color: 0xff6ad5 });
     [-1, 1].forEach(function (sd) { var r = new T.Mesh(new T.BoxGeometry(0.18, 0.18, 360), railM); r.position.set(sd * (C.LANE_W * 1.5 + 0.45), 0.5, 0); scene.add(r); rails.push(r); var w = new T.Mesh(new T.BoxGeometry(0.4, 0.5, 360), new T.MeshStandardMaterial({ color: 0x3b3560, roughness: 0.6, metalness: 0.4 })); w.position.set(sd * (C.LANE_W * 1.5 + 0.45), 0.2, 0); scene.add(w); rails.push(w); });
-    // city: 4 tower variants with lit-window textures, instanced, recycled
-    var winTex = canvasTex(128, 256, function (g, w, h) { g.fillStyle = '#000'; g.fillRect(0, 0, w, h); for (var y = 6; y < h; y += 14) for (var x = 6; x < w; x += 14) { if (Math.random() < 0.55) { var c = ['#7ef9ff', '#ffd27a', '#ff8fd8', '#b8a6ff'][Math.floor(Math.random() * 4)]; g.fillStyle = c; g.globalAlpha = 0.5 + Math.random() * 0.5; g.fillRect(x, y, 8, 8); } } g.globalAlpha = 1; }, true);
-    var bM = new T.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4, metalness: 0.5, emissive: 0xffffff, emissiveMap: winTex, emissiveIntensity: 1.1 });
-    R.city = [];
-    [[8, 30, 8], [10, 52, 9], [7, 75, 7], [12, 22, 12]].forEach(function (d, vi) {
-      var geo = new T.BoxGeometry(d[0], d[1], d[2]); var uv = geo.attributes.uv; for (var k = 0; k < uv.count; k++) uv.setXY(k, uv.getX(k) * d[0] / 8, uv.getY(k) * d[1] / 16); geo.translate(0, d[1] / 2, 0);
-      var n = 18, im = new T.InstancedMesh(geo, bM, n); im.frustumCulled = false;
-      for (var k2 = 0; k2 < n; k2++) { var sd = k2 % 2 ? 1 : -1; var it = { side: sd, z: -(k2 * 26 + vi * 6.5 + Math.random() * 6), off: 12 + Math.random() * 30 + vi * 5, d: d }; R.city.push({ im: im, i: k2, it: it }); col.setHSL(0.62 + Math.random() * 0.25, 0.35, 0.2 + Math.random() * 0.15); im.setColorAt(k2, col); }
-      scene.add(im); R['cityIm' + vi] = im;
-    });
     // launch towers + rockets in the distance (space-port)
     R.rockets = [];
     var rkM = new T.MeshStandardMaterial({ color: 0xe9ecf2, roughness: 0.35, metalness: 0.6 });
@@ -4791,10 +4882,10 @@ var RRRender = (function () {
 
   // ---------- v2 set pieces: hyperloop tunnel, spaceport launch, sky bridge; speed streaks ----------
   var CY = 1300, Z_TUN = 520, Z_PORT = 680, Z_SKY = 980, TUN_R = 13, SEG = 6, NSEG = 46;
-  var PAL = { city: [[1.0, 0.55, 0.62], [0.48, 0.32, 0.85], [0.06, 0.06, 0.25], 0x9a5fb8], port: [[1.0, 0.72, 0.45], [0.58, 0.42, 0.8], [0.08, 0.07, 0.28], 0xb47d8c], sky: [[0.62, 0.66, 0.92], [0.36, 0.42, 0.86], [0.08, 0.1, 0.36], 0x56609e] };
-  var fogA = new T.Color(), fogB = new T.Color(), fogT = new T.Color(0x0e1630);
+  var PAL = { city: [[0.86, 0.46, 0.96], [0.36, 0.2, 0.72], [0.03, 0.02, 0.13]], port: [[0.98, 0.52, 0.82], [0.48, 0.24, 0.74], [0.05, 0.03, 0.16]], sky: [[0.62, 0.52, 1.0], [0.3, 0.24, 0.8], [0.04, 0.04, 0.18]] }; // v4 purple moon: [horizon, mid, zenith]; the horizon colour is also the fog colour
+  var fogT = new T.Color(0x0e1630);
   function zoneW(m, a, b) { return sm((m - a) / 30) * (1 - sm((m - b) / 30)); }
-  R.biome = function (z) { var m = ((z % CY) + CY) % CY; return m < Z_TUN ? 'city' : m < Z_PORT ? 'tunnel' : m < Z_SKY ? 'port' : 'sky'; };
+  R.biome = function (z) { var m = ((z % CY) + CY) % CY; return m < Z_TUN ? 'plains' : m < Z_PORT ? 'tunnel' : m < Z_SKY ? 'port' : 'sky'; };
   function buildSetPieces() {
     var stripT = canvasTex(256, 16, function (g, w, h) { g.fillStyle = '#141a33'; g.fillRect(0, 0, w, h); g.fillStyle = '#7ef9ff'; [0.18, 0.5, 0.82].forEach(function (f) { g.fillRect(w * f - 3, 0, 6, h); }); g.fillStyle = '#ff6ad5'; [0.34, 0.66].forEach(function (f) { g.fillRect(w * f - 2, 0, 4, h); }); }, true);
     var shellG = new T.CylinderGeometry(TUN_R, TUN_R, SEG + 0.05, 40, 1, true, Math.PI / 2, Math.PI); shellG.rotateX(Math.PI / 2);
@@ -4830,7 +4921,7 @@ var RRRender = (function () {
     I.pylon.count = np;
     var skyOn = wS > 0.5; R.ground.visible = !skyOn; R.clouds.visible = wS > 0.01; R.clouds.position.set(x, -38, zI - 200); R.clouds.material.map.offset.y = -g.z / 150;
     // spaceport: towers + a scripted launch keyed to player distance
-    for (i = 0; i < R.rockets.length; i++) { var rk = R.rockets[i], base = (m < Z_SKY ? cs : cs + CY) + Z_PORT + 60 + i * 70; rk.position.set((i % 2 ? 1 : -1) * (26 + i * 5), 0, -base); rk.visible = Math.abs(base - g.z) < C.VIEW + 80 && base > g.z - 60; rk.children[0].position.y = 30; }
+    for (i = 0; i < R.rockets.length; i++) { var rk = R.rockets[i], base = (m < Z_SKY ? cs : cs + CY) + Z_PORT + 60 + i * 70; rk.position.set((i % 2 ? 1 : -1) * (120 + i * 30), 0, -base); /* v4: far out on the crater plain (v3 stood beside the road: big parallax pops) */ rk.visible = wP > 0.02 || Math.abs(base - g.z) < C.VIEW; /* no distance-based pop-in: visible for the whole zone */ rk.children[0].position.y = 30; }
     var L = R.rockets[2], lb = (m < Z_SKY ? cs : cs + CY) + Z_PORT + 200, lift = Math.max(0, g.z - (lb - 150)), h = lift * lift * 0.012;
     L.children[0].position.y = 30 + h; L.children[1].position.y = 65 + h;
     var burning = lift > 0 && h < 600 && L.visible; R.launchPlume.material.opacity = burning ? Math.min(1, lift / 10) : 0; R.launchPlume.position.set(L.position.x, h - 2, L.position.z); R.padLight.intensity = burning ? 900 * Math.min(1, lift / 10) / (1 + h * 0.02) : 0; R.padLight.position.set(L.position.x, h + 2, L.position.z);
@@ -4841,8 +4932,8 @@ var RRRender = (function () {
     U.hor.value.setRGB(Cc[0][0] + (A[0][0] - Cc[0][0]) * wB, Cc[0][1] + (A[0][1] - Cc[0][1]) * wB, Cc[0][2] + (A[0][2] - Cc[0][2]) * wB);
     U.mid.value.setRGB(Cc[1][0] + (A[1][0] - Cc[1][0]) * wB, Cc[1][1] + (A[1][1] - Cc[1][1]) * wB, Cc[1][2] + (A[1][2] - Cc[1][2]) * wB);
     U.top.value.setRGB(Cc[2][0] + (A[2][0] - Cc[2][0]) * wB, Cc[2][1] + (A[2][1] - Cc[2][1]) * wB, Cc[2][2] + (A[2][2] - Cc[2][2]) * wB);
-    fogA.setHex(Cc[3]); fogB.setHex(A[3]); scene.fog.color.copy(fogA).lerp(fogB, wB).lerp(fogT, wT * 0.85);
-    scene.fog.near = 70 - 40 * wT; scene.fog.far = 260 - 80 * wT + 60 * wS;
+    scene.fog.color.copy(R.hor).lerp(fogT, wT * 0.85); // v4: fog == sky horizon colour (v3 mismatch made fogged silhouettes and the ground edge read as bands)
+    scene.fog.near = 70 - 40 * wT; scene.fog.far = 300 - 100 * wT + 40 * wS;
     R.sun.intensity = 2.4 * (1 - 0.65 * wT); R.hemi.intensity = 0.7 * (1 - 0.3 * wT) + 0.2 * wS;
     // speed streaks: visible at high speed, during rocket flight and FOV kicks
     var sf = Math.max(0, (g.speed - 22) / 11), fly = g.rocketT > 0 ? 1 : 0, vis = Math.min(1, sf * 0.8 + fly + R.kick * 0.08 + wT * 0.5) * (app.reducedMotion ? 0.3 : 1);
@@ -4973,15 +5064,15 @@ var RRRender = (function () {
   R.event = function (e, g) {
     var x = g.x, y = g.y, z = -g.z, i;
     if (e.type === 'jump') { for (i = 0; i < 26; i++) { var cx = (i % 2 ? 1 : -1) * (0.62 + Math.random() * 0.12), cz = z + (i % 4 < 2 ? -1.15 : 1.7); partsSmoke.emit(x + cx, y + 0.1, cz, cx * 2 + (Math.random() - 0.5), -2 - Math.random() * 3, (Math.random() - 0.5) * 2 + g.speed * 0.6, 0.95, 0.97, 1, 0.55 + Math.random() * 0.3, 0.35, 2.4); } R.squash = -0.25; }
-    else if (e.type === 'land') { for (i = 0; i < 20; i++) partsSmoke.emit(x + (Math.random() - 0.5) * 2.4, g.ground + 0.1, z + (Math.random() - 0.5) * 3, (Math.random() - 0.5) * 6, Math.random() * 1.5, g.speed * 0.5, 0.9, 0.9, 0.95, 0.5, 0.3, 2.2); R.squash = 0.3; shake = Math.max(shake, Math.min(0.25, e.a * 0.012)); }
+    else if (e.type === 'land') { for (i = 0; i < 20; i++) partsSmoke.emit(x + (Math.random() - 0.5) * 2.4, g.ground + 0.1, z + (Math.random() - 0.5) * 3, (Math.random() - 0.5) * 6, Math.random() * 1.5, g.speed * 0.5, 0.9, 0.9, 0.95, 0.5, 0.3, 2.2); R.squash = 0.3; }
     else if (e.type === 'slide') { for (i = 0; i < 16; i++) partsSpark.emit(x + (Math.random() - 0.5) * 1.8, 0.1, z + 1.6, (Math.random() - 0.5) * 3, Math.random() * 2, g.speed * 0.8, 0.5, 0.9, 1, 0.35, 0.18); }
     else if (e.type === 'coin') { for (i = 0; i < 6; i++) partsSpark.emit(x + (Math.random() - 0.5), y + 0.9, z - 0.8, (Math.random() - 0.5) * 4, Math.random() * 4, (Math.random() - 0.5) * 3, 1, 0.85, 0.3, 0.4, 0.22); R.coinPulse = 1; }
     else if (e.type === 'start') { R.kick = 6; }
     else if (e.type === 'combo') { R.kick = Math.max(R.kick, Math.min(4, 1 + e.a * 0.4)); for (i = 0; i < 12; i++) { var q = Math.random() * 6.28; partsSpark.emit(x + Math.cos(q) * 1.4, y + 0.6, z, Math.cos(q) * 3, 1 + Math.random() * 2, Math.sin(q) * 3, 0.5, 0.95, 1, 0.45, 0.25); } }
-    else if (e.type === 'power') { R.kick = e.a === 'rocket' ? 12 : 7; for (i = 0; i < 40; i++) { var a = Math.random() * 6.28; partsSpark.emit(x, y + 0.8, z, Math.cos(a) * 7, Math.random() * 6, Math.sin(a) * 7, 1, 0.9, 0.5, 0.7, 0.3); } shake = Math.max(shake, 0.12); }
-    else if (e.type === 'shieldpop') { for (i = 0; i < 50; i++) { var b = Math.random() * 6.28; partsSpark.emit(x, y + 0.7, z - 1, Math.cos(b) * 9, Math.random() * 7, Math.sin(b) * 9, 0.4, 0.9, 1, 0.8, 0.35); } shake = 0.5; }
-    else if (e.type === 'stumble') { shake = 0.35; for (i = 0; i < 14; i++) partsSpark.emit(x, y + 0.6, z, (Math.random() - 0.5) * 6, Math.random() * 5, 0, 1, 0.8, 0.4, 0.4, 0.2); }
-    else if (e.type === 'crash' || e.type === 'caught') { shake = 0.9; for (i = 0; i < 70; i++) { var c2 = Math.random() * 6.28; partsSpark.emit(x, y + 0.8, z - 1.5, Math.cos(c2) * 10, Math.random() * 9, Math.sin(c2) * 6, 1, 0.6 + Math.random() * 0.4, 0.3, 1.0, 0.4); partsSmoke.emit(x, y + 0.5, z - 1, (Math.random() - 0.5) * 5, Math.random() * 3, (Math.random() - 0.5) * 5, 0.85, 0.85, 0.9, 1.2, 0.5, 2); } }
+    else if (e.type === 'power') { R.kick = e.a === 'rocket' ? 12 : 7; for (i = 0; i < 40; i++) { var a = Math.random() * 6.28; partsSpark.emit(x, y + 0.8, z, Math.cos(a) * 7, Math.random() * 6, Math.sin(a) * 7, 1, 0.9, 0.5, 0.7, 0.3); } }
+    else if (e.type === 'shieldpop') { for (i = 0; i < 50; i++) { var b = Math.random() * 6.28; partsSpark.emit(x, y + 0.7, z - 1, Math.cos(b) * 9, Math.random() * 7, Math.sin(b) * 9, 0.4, 0.9, 1, 0.8, 0.35); } }
+    else if (e.type === 'stumble') { R.wobT = 0; for (i = 0; i < 14; i++) partsSpark.emit(x, y + 0.6, z, (Math.random() - 0.5) * 6, Math.random() * 5, 0, 1, 0.8, 0.4, 0.4, 0.2); }
+    else if (e.type === 'crash' || e.type === 'caught') { for (i = 0; i < 70; i++) { var c2 = Math.random() * 6.28; partsSpark.emit(x, y + 0.8, z - 1.5, Math.cos(c2) * 10, Math.random() * 9, Math.sin(c2) * 6, 1, 0.6 + Math.random() * 0.4, 0.3, 1.0, 0.4); partsSmoke.emit(x, y + 0.5, z - 1, (Math.random() - 0.5) * 5, Math.random() * 3, (Math.random() - 0.5) * 5, 0.85, 0.85, 0.9, 1.2, 0.5, 2); } }
     else if (e.type === 'rocketoff') { for (i = 0; i < 30; i++) partsSmoke.emit(x + (Math.random() - 0.5) * 2, y, z + (Math.random() - 0.5) * 3, (Math.random() - 0.5) * 4, -3, g.speed * 0.5, 1, 1, 1, 0.8, 0.4, 2.5); }
   };
 
@@ -5001,7 +5092,11 @@ var RRRender = (function () {
     R.squash = (R.squash || 0) * Math.pow(0.002, dt);
     var sq = sliding ? 0.78 : 1 + (R.squash || 0) * 0.25;
     carBody.scale.set(1 + (1 - sq) * 0.35, sq, 1 + (1 - sq) * 0.2); carBody.position.y = sliding ? -0.12 : 0;
-    if (g.state === 'over') { carBody.rotation.y += dt * 3 * Math.max(0, 1 - (app.overT || 0)); }
+    if (g.state === 'over') { carBody.rotation.y += dt * 1.6 * Math.max(0, 1 - (app.overT || 0)); }
+    // v4 crash feel: squash-bounce + knock-back from the pure crash curve; soft wobble after a side-swipe
+    var cf = g.state === 'over' ? RRLogic.crashFx(app.crashT || 0) : null; R.cf = cf;
+    if (cf && !app.reducedMotion) { carBody.scale.set(cf.sxz, cf.sy, cf.sxz); carBody.position.y = cf.hop; car.position.z += cf.knock; }
+    R.wobT = R.wobT == null ? 9 : R.wobT + dt; var wb = RRLogic.wobble(R.wobT), wk = app.reducedMotion ? 0.25 : 1; carBody.rotation.z += wb.roll * wk;
     var spin = g.speed * dt / RRCar.WR; for (var i = 0; i < wheels.length; i++) wheels[i].rotation.x -= spin;
     // v3 active rear wing: flush when cruising, raised for the thrust boost, half-raised for stability in a hop
     var wTgt = flying ? 1 : g.air ? 0.5 : 0; R.wingK = (R.wingK || 0) + (wTgt - (R.wingK || 0)) * Math.min(1, dt * 6); R.wing.position.y = R.wing.userData.stowY + (R.wing.userData.upY - R.wing.userData.stowY) * R.wingK; R.wing.position.z = R.wing.userData.stowZ + (R.wing.userData.upZ - R.wing.userData.stowZ) * R.wingK; R.wing.rotation.x = -0.12 * R.wingK;
@@ -5018,16 +5113,13 @@ var RRRender = (function () {
     drone.position.set(x * 0.85 + 1.5 + Math.sin(clock * 1.3) * 0.3, dy, dz); drone.scale.setScalar(0.75); drone.rotation.y = Math.PI + Math.sin(clock * 2) * 0.2; drone.rotation.z = Math.sin(clock * 2.4) * 0.1; drone.visible = g.state !== 'ready' && (g.chase > 0.04 || g.state === 'over');
     droneProps[0].rotation.y += dt * 30; droneProps[1].rotation.y -= dt * 30;
     // road & rails follow the car; texture scrolls
-    road.position.set(0, 0, z - 140); roadTex.offset.y = (gz / 360) * 30 % 1; R.ground.position.set(x, -0.05, z - 120);
+    road.position.set(0, 0, z - 140); roadTex.offset.y = (gz / 360) * 30 % 1; 
     for (i = 0; i < rails.length; i++) rails[i].position.z = z - 140;
     R.sky.position.set(x, 0, z); R.stars.position.set(x, 0, z); R.planet.position.set(-220, 180, z - 700); R.ring.position.copy(R.planet.position);
     // sun & shadow box follow the car
     R.sun.position.set(x - 6, 14, z + 4); R.sun.target.position.set(x, 0, z - 6);
-    // city recycle
-    for (i = 0; i < R.city.length; i++) { var cb = R.city[i], it = cb.it; if (it.z > z + 30) { it.z -= 18 * 26; it.off = 12 + Math.random() * 30; } var bzm = ((-it.z % CY) + CY) % CY, bOn = bzm < Z_TUN + 20 || bzm > CY - 30; dummy.position.set(it.side * (C.LANE_W * 1.5 + 2 + it.off), bOn ? 0 : -400, it.z); dummy.rotation.set(0, 0, 0); dummy.scale.set(1, 1, 1); dummy.updateMatrix(); cb.im.setMatrixAt(cb.i, dummy.matrix); }
-    for (i = 0; i < 4; i++) { R['cityIm' + i].count = 18; R['cityIm' + i].instanceMatrix.needsUpdate = true; }
-    drawSetPieces(g, z, x, y, dt, app);
-    var a0 = Math.floor(gz / 45); for (i = 0; i < 8; i++) { var az = (a0 + i) * 45 + 20, azm = ((az % CY) + CY) % CY, hideA = (y > 3 && az < gz + 6) || (azm >= Z_TUN - 10 && azm < Z_PORT + 10); dummy.position.set(0, hideA ? -50 : 0.3, -az); dummy.rotation.set(0, 0, 0); dummy.scale.set(1, 1.35, 1); dummy.updateMatrix(); arches.setMatrixAt(i, dummy.matrix); } arches.instanceMatrix.needsUpdate = true; arches.count = 8;
+    drawSetPieces(g, z, x, y, dt, app); placeTerrain(x, y, z);
+    var a0 = Math.floor(gz / 45); for (i = 0; i < 8; i++) { var az = (a0 + i) * 45 + 20, azm = ((az % CY) + CY) % CY, hideA = (y > 3 && az < gz + 6) || (azm >= Z_TUN - 10 && azm < Z_PORT + 10); dummy.position.set(0, hideA ? -50 : 0.3, -az); dummy.rotation.set(0, 0, 0); dummy.scale.set(1, 1.35, 1); dummy.updateMatrix(); arches.setMatrixAt((((a0 + i) % 8) + 8) % 8, dummy.matrix); } /* v4 fix: slot = arch index mod 8, so each arch keeps its colour (v3 re-used slot i, and every arch swapped pink/cyan each 45 m: a full-screen colour pop) */ arches.instanceMatrix.needsUpdate = true; arches.count = 8;
     // obstacles
     var nB = 0, nBr = 0, nH = 0, nS = 0, nR = 0, nHL = 0, near = g.z - 30, far = g.z + C.VIEW + 10;
     for (i = 0; i < g.obs.length; i++) {
@@ -5070,9 +5162,14 @@ var RRRender = (function () {
     back += Math.min(1.2, (g.surgeA || 0) * 0.1) * (app.reducedMotion ? 0.3 : 1); R.camB = R.camB == null ? back : R.camB + (back - R.camB) * Math.min(1, dt * 4); back = R.camB;
     var cy = Math.max(y * 0.75, 0) + up; R.camY = (R.camY == null ? cy : R.camY + (cy - R.camY) * Math.min(1, dt * 5));
     R.camX = (R.camX == null ? x : R.camX + (x * 0.85 - R.camX) * Math.min(1, dt * 7));
-    shake *= Math.pow(app.reducedMotion ? 0.0001 : 0.01, dt);
-    var sk = shake * (app.reducedMotion ? 0.25 : 1);
-    camera.position.set(R.camX + (Math.random() - 0.5) * sk, R.camY + (Math.random() - 0.5) * sk, z + back);
+    // v4 fix (bug #v4-7): during the crash the chase camera's own lag-follow kept easing (e.g. down after a jump) while the crash
+    // pull-back eased up; the sum went down-up-down (a visible bob). Freeze the follow base at the crash and blend it to its
+    // rest target on the SAME monotone smoothstep as the pull-back, so every camera axis moves one way only.
+    if (R.cf) { if (!R.crashBase) R.crashBase = { x: R.camX, y: R.camY, b: R.camB, ty: cy, tb: back };
+      var cbs = R.crashBase, ce = Math.min(1, R.cf.back / 2.4); R.camX = cbs.x; R.camY = cbs.y + (cbs.ty - cbs.y) * ce; R.camB = cbs.b + (cbs.tb - cbs.b) * ce; back = R.camB;
+    } else R.crashBase = null;
+    var cb = R.cf ? R.cf.back * (app.reducedMotion ? 0.3 : 1) : 0, cu = R.cf ? R.cf.up * (app.reducedMotion ? 0.3 : 1) : 0; /* v4: eased pull-back, no random shake */
+    camera.position.set(R.camX + wb.sway * wk, R.camY + cu, z + back + cb);
     camera.lookAt(R.camX * 0.9, Math.max(0, y * 0.6) + 1.1, z - look);
     if (app.camOverride) { var co = app.camOverride; camera.position.set(x + co[0], y + co[1], z + co[2]); camera.lookAt(x, y + 0.6, z); }
     R.kick *= Math.pow(0.04, dt); var sfov = Math.max(0, (g.speed - C.SPEED0) / (C.SPEED_MAX - C.SPEED0));
@@ -5176,12 +5273,12 @@ var RRRender = (function () {
   function resume() { if (!app.paused) return; RRAudio.init(); RRAudio.play('tap'); app.paused = false; show(null); $('hud').classList.remove('hidden'); RRAudio.music(true); last = performance.now(); }
   function home() { RRAudio.play('tap'); RRAudio.engine(false, 0, 0); app.screen = 'title'; app.paused = false; game.reset(game.seed + 1); show('title'); $('hud').classList.add('hidden'); $('hint').classList.add('hidden'); $('best').textContent = app.best; RRAudio.music(false); }
   function gameOver() {
-    app.screen = 'over'; app.overT = 0; RRAudio.music(false); RRAudio.engine(false, 0, 0);
+    app.screen = 'over'; app.overT = 0; app.overAt = performance.now(); app.crashT = 0; RRAudio.music(false); RRAudio.engine(false, 0, 0);
     var s = Math.floor(game.score);
     app.newBest = s > app.best; if (app.newBest) { app.best = s; sset('rrush.best', s); }
     $('finalScore').textContent = s; $('finalCoins').textContent = game.coins; $('finalBest').textContent = app.best; $('newbest').classList.toggle('hidden', !app.newBest);
     $('hint').classList.add('hidden');
-    setTimeout(function () { if (app.screen !== 'over') return; show('over'); if (app.newBest) RRAudio.play('newbest'); }, 750);
+    app.overShown = false; /* v4: the card fades in when the crash curve finishes (see frame), not on a timer cut */
   }
   function tapBtn(id, fn) { $(id).addEventListener('pointerdown', function (e) { e.preventDefault(); e.stopPropagation(); fn(); }); }
   tapBtn('playbtn', function () { startRun(); });
@@ -5237,7 +5334,7 @@ var RRRender = (function () {
   function pop(text) { var el = $('pops'); el.textContent = text; el.style.opacity = 1; popT = 0.9; }
   // events -> audio/render juice
   function haptic(p) { if (!app.haptics || app.reducedMotion || !p) return; try { navigator.vibrate(p); app.hapN++; } catch (e) { app.haptics = false; } }
-  var HITSTOP = { crash: 0.12, stumble: 0.07, shieldpop: 0.06 };
+  var HITSTOP = { stumble: 0.05, shieldpop: 0.06 }; /* v4: no hard freeze on crash; the eased slow-motion curve (RRLogic.crashFx) replaces it */
   function drain() {
     var ev = game.events, n = game.evN;
     for (var i = 0; i < n; i++) {
@@ -5245,7 +5342,7 @@ var RRRender = (function () {
       if (fb) { if (fb.hap) haptic(fb.hap); if (HITSTOP[e.type]) app.hitStop = Math.max(app.hitStop, HITSTOP[e.type]); }
       if (e.type === 'coin') RRAudio.play('coin', e.a);
       else if (e.type === 'power') { RRAudio.play(e.a === 'rocket' ? 'rocket' : 'power'); }
-      else if (e.type === 'crash') { RRAudio.play('crash'); $('flash').style.opacity = 0.5; setTimeout(function () { $('flash').style.opacity = 0; }, 90); }
+      else if (e.type === 'crash') { RRAudio.play('crash'); }
       else if (e.type === 'combo') { RRAudio.play('combo', e.a); if (e.a >= 2) pop('x' + (Math.round(game.mult() * 100) / 100)); }
       else if (fb && fb.sfx) RRAudio.play(fb.sfx, e.a);
     }
@@ -5289,13 +5386,13 @@ var RRRender = (function () {
       else { acc += dt; while (acc >= L.C.STEP) { game.step(L.C.STEP); acc -= L.C.STEP; } alpha = acc / L.C.STEP; }
       drain(); hud(); clarity(); engT -= dt; if (engT <= 0) { engT = 0.1; RRAudio.engine(game.state === 'play', (game.speed - L.C.SPEED0) / (L.C.SPEED_MAX - L.C.SPEED0), game.rocketT > 0 ? 1 : 0); }
       if (game.state === 'over') gameOver();
-    } else if (app.screen === 'over') { app.overT += dt; drain(); }
+    } else if (app.screen === 'over') { app.overT += dt; drain(); app.crashT = (now - app.overAt) / 1000; var cf = L.crashFx(app.crashT); /* wall clock: the card appears on time even on a slow device */ app.crashTs = cf.ts; $('flash').style.opacity = cf.tint.toFixed(3); if (cf.done && !app.overShown) { app.overShown = true; show('over'); if (app.newBest) RRAudio.play('newbest'); } }
     else if (app.screen === 'title') { // attract: car idles on the road
       game.x = game.px = Math.sin(now / 1400) * 0.4;
     }
     if (app.hintT > 0) { app.hintT -= dt; if (app.hintT <= 0) $('hint').classList.add('hidden'); }
     if (popT > 0) { popT -= dt; if (popT <= 0) $('pops').style.opacity = 0; }
-    RRRender.draw(game, app.paused ? 0 : dt, app, alpha);
+    RRRender.draw(game, app.paused ? 0 : dt * (app.screen === 'over' && !app.overShown ? (app.crashTs || 1) : 1), app, alpha);
     gpuEnd();
     var work = performance.now() - w0, k = app.frameN % 600; app.frameMs[k] = work; app.ivMs[k] = iv; app.frameN++;
     if (!app.paused && !app.lockQuality && RRGov.frame(gov, iv, app.gpuMs != null ? app.gpuMs : work)) RRRender.applyGov(gov);
@@ -5315,4 +5412,5 @@ var RRRender = (function () {
 
 </script>
 <!-- Three.js r180 (c) 2010-2025 Three.js Authors, MIT License. Roadster Rush v2 is an original game: no third-party game or car-maker code, art, audio, logos or names are used. -->
+<script>/* v4 offline install: only on https (the published site); file:// and http keep working as a plain page */ if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js');</script>
 </body></html>
