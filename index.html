@@ -29,7 +29,9 @@ button{font:inherit;color:#fff;border:0;cursor:pointer;touch-action:manipulation
 .chip svg{width:30px;height:30px}
 #hud{position:fixed;inset:0;pointer-events:none}
 #hud .tl{position:absolute;top:calc(var(--sat) + 10px);left:calc(var(--sal) + 10px);display:flex;flex-direction:column;gap:8px;align-items:flex-start}
-#hud .tr{position:absolute;top:calc(var(--sat) + 10px);right:calc(var(--sar) + 10px);pointer-events:auto}
+#hud .tr{position:absolute;top:calc(var(--sat) + 10px);right:calc(var(--sar) + 10px);pointer-events:auto;display:flex;gap:12px}
+.musictog.off{background:rgba(30,18,64,.5)}
+.ver{position:absolute;right:calc(var(--sar) + 14px);bottom:calc(var(--sab) + 10px);font-size:13px;font-weight:700;opacity:.5;pointer-events:none;letter-spacing:.5px}
 #score{font-size:30px;font-variant-numeric:tabular-nums;min-width:120px}
 #coinsChip{font-size:24px}
 #pows{position:absolute;bottom:calc(var(--sab) + 16px);left:50%;transform:translateX(-50%);display:flex;gap:10px}
@@ -65,7 +67,7 @@ button{font:inherit;color:#fff;border:0;cursor:pointer;touch-action:manipulation
 <div id="hud" class="hidden">
   <div id="danger"></div>
   <div class="tl"><div class="chip" id="score">0</div><div class="chip" id="coinsChip"><span class="ic-coin"></span><span id="coins">0</span></div></div>
-  <div class="tr"><button class="btn" id="pausebtn" aria-label="Pause"><span class="ic-pause"></span></button></div>
+  <div class="tr"><button class="btn musictog" id="musicbtnHud" aria-label="Music on or off"></button><button class="btn" id="pausebtn" aria-label="Pause"><span class="ic-pause"></span></button></div>
   <div id="mult" class="hidden">x2</div>
   <div id="pows"></div>
 </div>
@@ -77,11 +79,13 @@ button{font:inherit;color:#fff;border:0;cursor:pointer;touch-action:manipulation
 <div id="title" class="panel">
   <div class="logo">ROADSTER<br>RUSH</div>
   <button class="big" id="playbtn" aria-label="Play"><span class="ic-play"></span></button>
-  <div class="row"><div class="chip" id="bestChip"><span class="ic-trophy"></span><span id="best">0</span></div><button class="btn" id="mutebtn" aria-label="Sound on or off"><span class="ic-sound"></span></button></div>
+  <div class="row"><div class="chip" id="bestChip"><span class="ic-trophy"></span><span id="best">0</span></div><button class="btn" id="mutebtn" aria-label="Sound on or off"><span class="ic-sound"></span></button><button class="btn musictog" id="musicbtn" aria-label="Music on or off"></button></div>
+  <div class="ver" id="ver" aria-hidden="true">v5</div>
 </div>
 <div id="paused" class="panel hidden">
   <button class="big" id="resumebtn" aria-label="Resume"><span class="ic-play"></span></button>
-  <div class="row"><button class="btn" id="restartbtn" aria-label="Restart"><span class="ic-replay"></span></button><button class="btn" id="homebtn" aria-label="Home"><span class="ic-home"></span></button><button class="btn" id="mutebtn2" aria-label="Sound on or off"><span class="ic-sound"></span></button></div>
+  <div class="row"><button class="btn" id="restartbtn" aria-label="Restart"><span class="ic-replay"></span></button><button class="btn" id="homebtn" aria-label="Home"><span class="ic-home"></span></button></div>
+  <div class="row"><button class="btn" id="mutebtn2" aria-label="Sound on or off"><span class="ic-sound"></span></button><button class="btn musictog" id="musicbtnPause" aria-label="Music on or off"></button></div>
 </div>
 <div id="over" class="panel hidden">
   <div class="burst hidden" id="newbest"><span class="ic-star"></span> NEW BEST <span class="ic-star"></span></div>
@@ -4321,17 +4325,29 @@ if (typeof module !== 'undefined') module.exports = RRLogic;
 /*LOGIC-END*/
 </script>
 <script>
-/* Roadster Rush v2 — layered procedural WebAudio (no files, no network): music bed + electric drive whine + wind + event SFX. */
+/*AUDIO-START*/
+/* Roadster Rush v5 — procedural WebAudio (no files, no network, no third-party music).
+   SFX (unchanged from v4) + engine whine/wind + v5 ORIGINAL synthwave loop "Moon Run" (composed for this game, generated in code):
+   104 BPM, 16 bars of 4/4 in A minor: Am | F | C | G | Am | F | Dm | E (2 bars each). Octave/arpeggiated saw bass, detuned saw pads,
+   a delayed square arp, four-on-the-floor kick, gated-reverb style snare, hats, a fill into the loop point.
+   Every note time is t0 + n * S16 from an integer step counter on the AudioContext clock, so a loop boundary is just n = 256k:
+   no drift, no gap and no overlap by construction. Music has its own bus (0.35 x the SFX bus) with sidechain-style ducking on SFX. */
 var RRAudio = (function () {
-  var ctx = null, master = null, musicGain = null, sfx = null, noiseBuf = null, muted = false, counts = {}, musicOn = false, nextBeat = 0, beat = 0, timer = null;
+  var ctx = null, master = null, sfx = null, musicBus = null, duckNode = null, noiseBuf = null, muted = false, counts = {}, sfxPlayed = 0;
+  var SFX_LEVEL = 0.9, MUSIC_REL = 0.35, MUSIC_LEVEL = SFX_LEVEL * MUSIC_REL;
+  var BPM = 104, S16 = 60 / BPM / 4, STEPS = 256, LOOP = STEPS * S16, LOOKAHEAD = 2.5, TICK = 50; // 2.5 s lookahead rides out main-thread stalls (measured 2.18 s at run start under software GL); mute is instant anyway (the session gain fades)
+  var DUCK = { depth: 0.5 /* -6.0 dB */, attack: 0.012, hold: 0.06, release: 0.3 };
+  var mus = { pref: true, gestured: false, hidden: false, playing: false, sess: null, t0: 0, n: 0, timer: null, loops: 0, late: 0, lastCall: 0, maxGapMs: 0, sched: 0, schedMs: 0, log: new Float64Array(1024), logN: 0 };
+  var duck = { g0: 1, t: -1e9, n: 0 };
   function init() {
-    if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
+    if (ctx) { if (ctx.state === 'suspended' && !mus.hidden) { try { ctx.resume(); } catch (e) {} } return; }
     var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
     ctx = new AC();
     var comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4; comp.connect(ctx.destination);
     master = ctx.createGain(); master.gain.value = muted ? 0 : 0.8; master.connect(comp);
-    sfx = ctx.createGain(); sfx.gain.value = 0.9; sfx.connect(master);
-    musicGain = ctx.createGain(); musicGain.gain.value = 0.32; musicGain.connect(master);
+    sfx = ctx.createGain(); sfx.gain.value = SFX_LEVEL; sfx.connect(master);
+    musicBus = ctx.createGain(); musicBus.gain.value = MUSIC_LEVEL; musicBus.connect(master);
+    duckNode = ctx.createGain(); duckNode.gain.value = 1; duckNode.connect(musicBus);
     noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate); var d = noiseBuf.getChannelData(0); for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
   }
   function tone(f, t0, dur, type, vol, f2, dest) {
@@ -4365,27 +4381,120 @@ var RRAudio = (function () {
     comboend: function (t) { tone(440, t, 0.18, 'sine', 0.06, 330); },
     rocket: function (t) { noise(t, 1.2, 0.4, 'lowpass', 400, 1600); tone(80, t, 1.0, 'sawtooth', 0.12, 160); }
   };
-  function play(name, a) { counts[name] = (counts[name] || 0) + 1; if (!ctx || muted || !SFX[name]) return; try { SFX[name](ctx.currentTime + 0.005, a); } catch (e) {} }
-  // simple upbeat loop: 4-bar progression, 116 bpm
-  var PROG = [[57, 60, 64], [53, 57, 60], [55, 59, 62], [52, 55, 59]];
-  function mtof(m) { return 440 * Math.pow(2, (m - 69) / 12); }
-  function schedule() {
-    if (!ctx || !musicOn) return;
-    var spb = 60 / 116 / 2;
-    while (nextBeat < ctx.currentTime + 0.25) {
-      var bar = Math.floor(beat / 8) % 4, ch = PROG[bar], st = beat % 8, t = nextBeat;
-      if (!muted) {
-        if (st % 2 === 0) tone(mtof(ch[0] - 24), t, spb * 1.6, 'triangle', 0.35, null, musicGain);
-        tone(mtof(ch[st % 3] + (st >= 4 ? 12 : 0)), t, spb * 0.9, 'square', 0.05, null, musicGain);
-        if (st % 4 === 0) { tone(110, t, 0.12, 'sine', 0.5, 45, musicGain); }
-        if (st % 4 === 2) noise(t, 0.09, 0.12, 'highpass', 5000, null, musicGain);
-        noise(t, 0.03, 0.04, 'highpass', 8000, null, musicGain);
-      }
-      nextBeat += spb; beat++;
-    }
+  // ---- sidechain-style ducking: one deterministic envelope (pure function) that the AudioParam automation follows exactly ----
+  function duckValue(g0, dt) {
+    var A = DUCK.attack, H = DUCK.hold, R = DUCK.release, D = DUCK.depth;
+    if (dt <= 0) return g0;
+    if (dt < A) return g0 + (Math.min(g0, D) - g0) * dt / A; // linear attack from wherever the envelope was (never below the depth)
+    if (dt < A + H) return D;
+    if (dt < A + H + R) return D + (1 - D) * (dt - A - H) / R;
+    return 1;
   }
-  function music(on) { if (!ctx) return; musicOn = on; if (on) { nextBeat = ctx.currentTime + 0.05; if (!timer) timer = setInterval(schedule, 90); } else { clearInterval(timer); timer = null; } }
-  function setMuted(m) { muted = m; if (master) master.gain.setTargetAtTime(m ? 0 : 0.8, ctx.currentTime, 0.02); }
+  function duckTrigger(t) {
+    var g0 = duckValue(duck.g0, t - duck.t), p = duckNode.gain;
+    if (p.cancelAndHoldAtTime) p.cancelAndHoldAtTime(t); else p.cancelScheduledValues(t);
+    p.setValueAtTime(g0, t); p.linearRampToValueAtTime(DUCK.depth, t + DUCK.attack); p.setValueAtTime(DUCK.depth, t + DUCK.attack + DUCK.hold); p.linearRampToValueAtTime(1, t + DUCK.attack + DUCK.hold + DUCK.release);
+    duck.g0 = g0; duck.t = t; duck.n++;
+  }
+  function play(name, a) {
+    counts[name] = (counts[name] || 0) + 1; if (!ctx || muted || !SFX[name]) return;
+    try { var t = ctx.currentTime + 0.005; SFX[name](t, a); sfxPlayed++; if (mus.playing) duckTrigger(t); } catch (e) {}
+  }
+  // ---- "Moon Run": original composition ----
+  function mtof(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+  var CH = [ // per 2-bar block: bass root, pad voicing (voice-led), arp tones
+    { r: 45, pad: [57, 60, 64], arp: [69, 72, 76, 81] },  // Am
+    { r: 41, pad: [57, 60, 65], arp: [69, 72, 77, 81] },  // F
+    { r: 48, pad: [55, 60, 64], arp: [67, 72, 76, 79] },  // C
+    { r: 43, pad: [55, 59, 62], arp: [67, 71, 74, 79] },  // G
+    { r: 45, pad: [57, 60, 64], arp: [69, 72, 76, 81] },  // Am
+    { r: 41, pad: [57, 60, 65], arp: [69, 72, 77, 81] },  // F
+    { r: 38, pad: [57, 62, 65], arp: [69, 74, 77, 81] },  // Dm
+    { r: 40, pad: [56, 59, 64], arp: [68, 71, 76, 80] }   // E (harmonic minor: leads back to Am at the loop point)
+  ];
+  var BASS_A = [0, 0, 12, 0], BASS_B = [0, 7, 12, 7], ARP = [0, 1, 2, 3, 2, 1, 0, 1];
+  function sess() { // one session graph per music start: quick on/off never overlaps an old session's tail
+    var g = ctx.createGain(); g.gain.value = 0; var trim = ctx.createGain(); trim.gain.value = 0.6; g.connect(trim); trim.connect(duckNode); // trim: pre-bus mix peaks ~0.9 (measured by test/music-render.js)
+    var dIn = ctx.createGain(), dl = ctx.createDelay(1.0), fb = ctx.createGain(), wet = ctx.createGain(), lp = ctx.createBiquadFilter();
+    dl.delayTime.value = S16 * 3; fb.gain.value = 0.32; wet.gain.value = 0.32; lp.type = 'lowpass'; lp.frequency.value = 2600;
+    dIn.connect(dl); dl.connect(lp); lp.connect(fb); fb.connect(dl); lp.connect(wet); wet.connect(g);
+    return { g: g, dry: g, fx: dIn, nodes: [g, trim, dIn, dl, fb, wet, lp] };
+  }
+  function osc(type, f, t, dur, vol, dest, a, r, detune) {
+    var o = ctx.createOscillator(), g = ctx.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); if (detune) o.detune.setValueAtTime(detune, t);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + a); g.gain.setValueAtTime(vol, t + Math.max(a, dur - r)); g.gain.linearRampToValueAtTime(0, t + dur);
+    o.connect(g); g.connect(dest); o.start(t); o.stop(t + dur + 0.02); return o;
+  }
+  function voices(step, t, S) {
+    var bar = step >> 4, s = step & 15, blk = CH[bar >> 1], half = bar >= 8, d = S.dry;
+    // bass: 16th-note saw with a plucky filter envelope (octave pattern A section, arpeggio root-5th-oct-5th B section)
+    var bp = (half ? BASS_B : BASS_A)[s & 3], bo = ctx.createOscillator(), bf = ctx.createBiquadFilter(), bg = ctx.createGain(), bl = S16 * 0.92;
+    bo.type = 'sawtooth'; bo.frequency.setValueAtTime(mtof(blk.r + bp), t); bf.type = 'lowpass'; bf.Q.value = 6;
+    bf.frequency.setValueAtTime(s % 4 === 0 ? 1500 : 1000, t); bf.frequency.exponentialRampToValueAtTime(240, t + bl);
+    bg.gain.setValueAtTime(0, t); bg.gain.linearRampToValueAtTime(s % 4 === 0 ? 0.3 : 0.22, t + 0.004); bg.gain.exponentialRampToValueAtTime(0.002, t + bl);
+    bo.connect(bf); bf.connect(bg); bg.connect(d); bo.start(t); bo.stop(t + bl + 0.02);
+    // pads: chord held for the 2-bar block (attack 0.5 s, release overlaps the next chord = crossfade), two detuned saws per note
+    if (step % 32 === 0) {
+      var pf = ctx.createBiquadFilter(), dur = 32 * S16 + 0.45; pf.type = 'lowpass'; pf.Q.value = 0.7; pf.frequency.setValueAtTime(700, t); pf.frequency.linearRampToValueAtTime(1900, t + 1.6); pf.frequency.linearRampToValueAtTime(1100, t + dur); pf.connect(d);
+      for (var i = 0; i < 3; i++) { osc('sawtooth', mtof(blk.pad[i]), t, dur, 0.032, pf, 0.5, 0.6, -8); osc('sawtooth', mtof(blk.pad[i]), t, dur, 0.032, pf, 0.5, 0.6, 8); }
+    }
+    // arp: square 16ths through a dotted-8th echo, from bar 5 (gives the loop an intro feel without a hard restart)
+    if (bar >= 4 && !(bar === 15 && s >= 12)) { var af = mtof(blk.arp[ARP[s & 7]]); osc('square', af, t, S16 * 0.7, s % 4 === 0 ? 0.05 : 0.035, S.fx, 0.004, 0.05, 0); osc('triangle', af, t, S16 * 0.7, 0.04, d, 0.004, 0.05, 0); }
+    // kick: every beat
+    if (s % 4 === 0) { var ko = ctx.createOscillator(), kg = ctx.createGain(); ko.frequency.setValueAtTime(150, t); ko.frequency.exponentialRampToValueAtTime(45, t + 0.12);
+      kg.gain.setValueAtTime(0.9, t); kg.gain.exponentialRampToValueAtTime(0.001, t + 0.3); ko.connect(kg); kg.connect(d); ko.start(t); ko.stop(t + 0.32); }
+    // gated snare on 2 and 4: noise held flat then cut hard (the gate), plus a short body tone
+    if (s === 4 || s === 12) gated(t, 0.34, 0.17, d, step);
+    if (bar === 15 && s >= 12) gated(t, 0.1 + (s - 12) * 0.06, 0.08, d, step); // fill into the loop point
+    // hats: closed on the off-beat 8ths, ghost 16ths in the B section
+    if (s % 4 === 2) hat(t, 0.11, 0.045, d, step); else if (half && s % 2 === 1) hat(t, 0.04, 0.025, d, step);
+    // crash at bar 1 and bar 9
+    if (s === 0 && (bar === 0 || bar === 8)) { var cs = ctx.createBufferSource(), cf = ctx.createBiquadFilter(), cg = ctx.createGain(); cs.buffer = noiseBuf; cs.loop = true; cf.type = 'highpass'; cf.frequency.value = 5200;
+      cg.gain.setValueAtTime(0.13, t); cg.gain.exponentialRampToValueAtTime(0.001, t + 1.8); cs.connect(cf); cf.connect(cg); cg.connect(d); cs.start(t); cs.stop(t + 1.85); }
+  }
+  function gated(t, vol, len, d, step) { // noise offsets keyed to the step in the loop, so every loop is sample-identical
+    var s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain(); s.buffer = noiseBuf; f.type = 'bandpass'; f.frequency.value = 1900; f.Q.value = 0.6;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + 0.003); g.gain.setValueAtTime(vol * 0.8, t + len); g.gain.linearRampToValueAtTime(0, t + len + 0.015);
+    s.connect(f); f.connect(g); g.connect(d); s.start(t, (step * 0.137) % 0.5); s.stop(t + len + 0.03);
+    var o = ctx.createOscillator(), og = ctx.createGain(); o.type = 'triangle'; o.frequency.setValueAtTime(200, t); o.frequency.exponentialRampToValueAtTime(140, t + 0.08);
+    og.gain.setValueAtTime(vol * 0.9, t); og.gain.exponentialRampToValueAtTime(0.001, t + 0.1); o.connect(og); og.connect(d); o.start(t); o.stop(t + 0.12);
+  }
+  function hat(t, vol, len, d, step) { var s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain(); s.buffer = noiseBuf; f.type = 'highpass'; f.frequency.value = 7500;
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + len); s.connect(f); f.connect(g); g.connect(d); s.start(t, (step * 0.071) % 0.5); s.stop(t + len + 0.02); }
+  // scheduler: integer step counter on the AudioContext clock; called every 50 ms, schedules up to 2.5 s ahead
+  function stepAt(n) { return mus.t0 + n * S16; }
+  function schedule() {
+    if (!ctx || !mus.playing) return;
+    var w0 = performance.now(), now = ctx.currentTime; if (mus.lastCall) mus.maxGapMs = Math.max(mus.maxGapMs, w0 - mus.lastCall); mus.lastCall = w0;
+    while (stepAt(mus.n) < now + LOOKAHEAD) {
+      var t = stepAt(mus.n);
+      if (t < now - 0.01) { mus.late++; mus.n = Math.ceil((now - mus.t0) / S16); continue; } // a long main-thread stall: skip ahead on the same grid, never pile notes up
+      voices(mus.n % STEPS, t, mus.sess);
+      mus.log[mus.logN % 1024] = mus.n; mus.logN++; if (mus.n % STEPS === 0 && mus.n > 0) mus.loops++;
+      mus.n++; mus.sched++;
+    }
+    mus.schedMs += performance.now() - w0;
+  }
+  function wanted() { return !!ctx && mus.gestured && mus.pref && !muted; }
+  function startMusic(n0) {
+    n0 = n0 || 0; var t = ctx.currentTime; mus.lastCall = 0; mus.sess = sess(); mus.t0 = t + 0.06 - n0 * S16; mus.n = n0; mus.playing = true;
+    mus.sess.g.gain.setValueAtTime(0, t); mus.sess.g.gain.linearRampToValueAtTime(1, t + 0.25);
+    schedule(); if (!mus.timer) mus.timer = setInterval(schedule, TICK);
+  }
+  function stopMusic() {
+    mus.playing = false; if (mus.timer) { clearInterval(mus.timer); mus.timer = null; }
+    var S = mus.sess; mus.sess = null; if (!S || !ctx) return; var t = ctx.currentTime;
+    S.g.gain.cancelScheduledValues(t); S.g.gain.setValueAtTime(S.g.gain.value, t); S.g.gain.linearRampToValueAtTime(0, t + 0.08);
+    setTimeout(function () { S.nodes.forEach(function (n) { try { n.disconnect(); } catch (e) {} }); }, Math.ceil((LOOKAHEAD + 0.6) * 1000));
+  }
+  function refresh() { var w = wanted(); if (w && !mus.playing) startMusic(); else if (!w && mus.playing) stopMusic(); }
+  function gesture(noMusic) { mus.gestured = true; init(); if (!noMusic) refresh(); }
+  function seek(n) { if (!mus.playing) return false; stopMusic(); startMusic(n); return true; } // test hook: restart the loop at step n on the same grid math (lets e2e reach a loop boundary in seconds)
+  function setMusic(on) { mus.pref = !!on; refresh(); }
+  // hidden tab: suspend the AudioContext. Its clock stops, so the already-scheduled notes and the step grid resume exactly where they paused (no restart, no gap).
+  function setHidden(h) { mus.hidden = !!h; if (!ctx) return; try { if (h) ctx.suspend(); else ctx.resume(); } catch (e) {} }
+  function music() { /* v4 API kept for callers: v5 music runs on every screen once the player has touched the game (see refresh) */ }
+  function setMuted(m) { muted = m; if (master) master.gain.setTargetAtTime(m ? 0 : 0.8, ctx.currentTime, 0.02); refresh(); }
   // continuous layers: electric drive whine (pitch follows speed) + wind noise (gain follows speed), updated per frame without allocation
   var drive = null;
   function engine(on, sp, boost) {
@@ -4399,10 +4508,38 @@ var RRAudio = (function () {
     drive.g.gain.setTargetAtTime(on && !muted ? 0.018 + k * 0.02 + boost * 0.03 : 0, t, 0.1);
     drive.wg.gain.setTargetAtTime(on && !muted ? 0.02 + k * 0.07 + boost * 0.08 : 0, t, 0.15); drive.wf.frequency.setTargetAtTime(700 + k * 900, t, 0.2);
   }
-  function state() { return { ctx: ctx ? ctx.state : 'none', counts: counts, muted: muted, music: musicOn, drive: !!drive }; }
-  return { init: init, play: play, music: music, setMuted: setMuted, state: state, engine: engine };
+  // test/evidence hooks: a meter tapped off the music bus only on request (no cost in normal play), the step log, and an offline render
+  var meter = null, meterBuf = null;
+  function musicLevel() { if (!ctx) return 0; if (!meter) { meter = ctx.createAnalyser(); meter.fftSize = 2048; meterBuf = new Float32Array(2048); musicBus.connect(meter); } meter.getFloatTimeDomainData(meterBuf); var s = 0; for (var i = 0; i < meterBuf.length; i++) s += meterBuf[i] * meterBuf[i]; return Math.sqrt(s / meterBuf.length); }
+  function musicLog() { var n = Math.min(mus.logN, 1024), out = []; for (var i = mus.logN - n; i < mus.logN; i++) out.push(mus.log[i % 1024]); return { steps: out, t0: mus.t0, s16: S16 }; }
+  function renderLoop(seconds, rate, startStep) { // OfflineAudioContext render of the music bus alone (evidence/WAV); same voices(), same clock math
+    var OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext; rate = rate || 44100;
+    var saved = { ctx: ctx, noiseBuf: noiseBuf, duckNode: duckNode }, oc = new OAC(1, Math.ceil(seconds * rate), rate);
+    ctx = oc; noiseBuf = oc.createBuffer(1, rate, rate); var d = noiseBuf.getChannelData(0); for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    var bus = oc.createGain(); bus.gain.value = 1; bus.connect(oc.destination); duckNode = bus; // the pre-bus music mix at unity (the in-game bus then applies 0.35 x SFX)
+    var S = sess(); S.g.gain.value = 1; var n0 = startStep || 0;
+    for (var n = n0; (n - n0) * S16 < seconds; n++) voices(n % STEPS, (n - n0) * S16, S);
+    ctx = saved.ctx; noiseBuf = saved.noiseBuf; duckNode = saved.duckNode;
+    return oc.startRendering();
+  }
+  function state() { return { ctx: ctx ? ctx.state : 'none', counts: counts, sfxPlayed: sfxPlayed, muted: muted, music: mus.playing, musicPref: mus.pref, gestured: mus.gestured, hidden: mus.hidden, drive: !!drive,
+    steps: mus.n, sched: mus.sched, maxGapMs: mus.maxGapMs, loops: mus.loops, late: mus.late, schedMs: mus.schedMs, duckN: duck.n, now: ctx ? ctx.currentTime : 0, duckGain: ctx ? duckValue(duck.g0, ctx.currentTime - duck.t) : 1, musicBusGain: musicBus ? musicBus.gain.value : 0 }; }
+  return { init: init, play: play, music: music, setMuted: setMuted, state: state, engine: engine, gesture: gesture, setMusic: setMusic, setHidden: setHidden, schedule: schedule, seek: seek,
+    musicLevel: musicLevel, musicLog: musicLog, renderLoop: renderLoop, duckValue: duckValue, C: { BPM: BPM, S16: S16, STEPS: STEPS, LOOP: LOOP, LOOKAHEAD: LOOKAHEAD, DUCK: DUCK, SFX_LEVEL: SFX_LEVEL, MUSIC_REL: MUSIC_REL, MUSIC_LEVEL: MUSIC_LEVEL } };
 })();
+// v5 music toggle controller (pure: storage + audio injected, so the unit tests drive it with fake events). Key 'rrush.music' = '1' | '0', nothing else stored.
+var RRMusicToggle = function (store, audio, onChange) {
+  var raw = null; try { raw = store.get('rrush.music'); } catch (e) {}
+  var t = { on: raw !== '0', key: 'rrush.music' };
+  function apply() { try { store.set('rrush.music', t.on ? '1' : '0'); } catch (e) {} audio.setMusic(t.on); if (onChange) onChange(t.on); }
+  t.toggle = function () { t.on = !t.on; audio.gesture(true); apply(); return t.on; };
+  t.onKey = function (e) { if (e.code !== 'KeyM' || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return false; if (e.preventDefault) e.preventDefault(); t.toggle(); return true; };
+  t.onPointer = function (e) { if (e.preventDefault) e.preventDefault(); if (e.stopPropagation) e.stopPropagation(); t.toggle(); return true; };
+  audio.setMusic(t.on);
+  return t;
+};
 
+/*AUDIO-END*/
 /* Roadster Rush v2 — pure, DOM-free helpers (unit-tested): adaptive quality governor + event feedback map. */
 /*GOV-START*/
 var RRGov = (function () {
@@ -5219,7 +5356,7 @@ var RRRender = (function () {
   return R;
 })();
 
-/* Roadster Rush v2 — app shell: screens, input, 120 Hz fixed-step loop + interpolation, hit-stop, haptics, adaptive governor, GPU timer, perf overlay, teach-by-play prompts, threat warnings, test hooks. */
+/* Roadster Rush v5 (app shell from v2-v4; v5 adds the music toggle) — app shell: screens, input, 120 Hz fixed-step loop + interpolation, hit-stop, haptics, adaptive governor, GPU timer, perf overlay, teach-by-play prompts, threat warnings, test hooks. */
 (function () {
   var L = RRLogic, $ = function (id) { return document.getElementById(id); };
   var ICON = {
@@ -5229,6 +5366,8 @@ var RRRender = (function () {
     home: '<svg viewBox="0 0 24 24"><path d="M3.5 11.2 12 4l8.5 7.2V20a1 1 0 0 1-1 1H15v-6H9v6H4.5a1 1 0 0 1-1-1z" fill="#fff"/></svg>',
     sound: '<svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z" fill="#fff"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round"/></svg>',
     mute: '<svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z" fill="#fff"/><path d="M16.5 9.5l5 5m0-5l-5 5" stroke="#ff6a8a" stroke-width="2.6" stroke-linecap="round"/></svg>',
+    note: '<svg viewBox="0 0 24 24"><path d="M9 17.5V6.2l10-2.4v11.4" stroke="#fff" stroke-width="2.4" fill="none" stroke-linejoin="round"/><ellipse cx="6.6" cy="17.6" rx="3.2" ry="2.6" fill="#7ff6ff"/><ellipse cx="16.6" cy="15.3" rx="3.2" ry="2.6" fill="#ff7ad9"/></svg>',
+    noteoff: '<svg viewBox="0 0 24 24"><g opacity=".55"><path d="M9 17.5V6.2l10-2.4v11.4" stroke="#fff" stroke-width="2.4" fill="none" stroke-linejoin="round"/><ellipse cx="6.6" cy="17.6" rx="3.2" ry="2.6" fill="#fff"/><ellipse cx="16.6" cy="15.3" rx="3.2" ry="2.6" fill="#fff"/></g><path d="M3.5 3.5l17 17" stroke="#ff6a8a" stroke-width="2.8" stroke-linecap="round"/></svg>',
     trophy: '<svg viewBox="0 0 24 24"><path d="M7 3h10v4a5 5 0 0 1-10 0z" fill="#ffd34d"/><path d="M7 5H4a3 3 0 0 0 3 4M17 5h3a3 3 0 0 1-3 4" stroke="#ffd34d" stroke-width="2" fill="none"/><rect x="10.5" y="11" width="3" height="5" fill="#ffb020"/><rect x="7.5" y="16" width="9" height="4" rx="1" fill="#ffd34d"/></svg>',
     coin: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5" fill="#ffc928" stroke="#ff9a00" stroke-width="2"/><circle cx="12" cy="12" r="5.5" fill="none" stroke="#fff3b0" stroke-width="2"/></svg>',
     star: '<svg viewBox="0 0 24 24" width="26" height="26" style="vertical-align:-4px"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.5 1.3 6.6L12 17.2l-5.9 3.3 1.3-6.6-4.9-4.5 6.6-.8z" fill="#ffd34d"/></svg>',
@@ -5259,6 +5398,14 @@ var RRRender = (function () {
   RRAudio.setMuted(app.muted);
   function setMuteIcons() { ['mutebtn', 'mutebtn2'].forEach(function (id) { var b = $(id); b.innerHTML = app.muted ? ICON.mute : ICON.sound; b.setAttribute('aria-pressed', app.muted ? 'true' : 'false'); }); }
   setMuteIcons();
+  // v5 music toggle: big icon button on title, HUD and pause (no reading needed), the M key, saved as 'rrush.music' only
+  var MUSIC_BTNS = ['musicbtn', 'musicbtnHud', 'musicbtnPause'];
+  function setMusicIcons(on) { MUSIC_BTNS.forEach(function (id) { var b = $(id); b.innerHTML = on ? ICON.note : ICON.noteoff; b.setAttribute('aria-pressed', on ? 'true' : 'false'); b.classList.toggle('off', !on); }); }
+  var mtog = RRMusicToggle({ get: sget, set: sset }, RRAudio, setMusicIcons); setMusicIcons(mtog.on);
+  MUSIC_BTNS.forEach(function (id) { $(id).addEventListener('pointerdown', function (e) { mtog.onPointer(e); }); });
+  // first user gesture unlocks audio (iOS rule): music never starts before this. A tap on the music button itself only unlocks; the button decides.
+  function unlock(e) { var tog = !!(e.target && e.target.closest && e.target.closest('.musictog')) || e.code === 'KeyM'; RRAudio.gesture(tog); }
+  ['pointerdown', 'touchend', 'keydown'].forEach(function (t) { window.addEventListener(t, unlock, true); });
   $('best').textContent = app.best;
   function show(id) { ['title', 'paused', 'over'].forEach(function (s) { $(s).classList.toggle('hidden', s !== id); }); $('hud').classList.toggle('hidden', !(app.screen === 'play')); }
   function startRun(seed) {
@@ -5311,11 +5458,12 @@ var RRRender = (function () {
   var KEYS = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowUp: 'up', KeyW: 'up', Space: 'up', ArrowDown: 'down', KeyS: 'down' };
   window.addEventListener('keydown', function (e) {
     if (e.repeat) return;
+    if (mtog.onKey(e)) return;
     if (e.code === 'Escape' || e.code === 'KeyP') { if (app.screen === 'play') { app.paused ? resume() : pause(); } return; }
     if (e.code === 'Enter' || (e.code === 'Space' && app.screen !== 'play')) { e.preventDefault(); if (app.screen === 'title' || (app.screen === 'over' && app.overT > 0.8)) startRun(); else if (app.paused) resume(); return; }
     var a = KEYS[e.code]; if (a) { e.preventDefault(); act(a, 'keys'); }
   });
-  document.addEventListener('visibilitychange', function () { if (document.hidden) pause(); });
+  document.addEventListener('visibilitychange', function () { RRAudio.setHidden(document.hidden); if (document.hidden) pause(); });
   window.addEventListener('blur', pause);
   window.addEventListener('resize', function () { RRRender.resize(); });
   window.addEventListener('orientationchange', function () { setTimeout(RRRender.resize, 200); });
@@ -5406,11 +5554,12 @@ var RRRender = (function () {
     L: L, game: function () { return game; }, app: function () { return app; }, inputs: inputs, audio: RRAudio.state, render: RRRender.info, quality: RRRender.quality,
     start: startRun, pause: pause, resume: resume, home: home,
     setBot: function (on) { app.bot = !!on; }, gov: function () { return gov; }, feedback: RRFeedback, perfToggle: perfToggle, perfText: function () { return perfEl.textContent; },
-    frameStats: function () { return { work: stats(app.frameMs, app.frameN), iv: stats(app.ivMs, app.frameN), gpuMs: app.gpuMs }; }, setTier: function (t, sc) { app.lockQuality = true; gov.tier = t; gov.scale = sc || 1; RRRender.applyGov(gov); }, unlockTier: function () { app.lockQuality = false; }, carScreenBox: function () { return RRRender.carScreenBox(); }, carContrast: function () { return RRRender.carContrast(); }, carHalfWidth: function () { return RRRender.carHalfWidth(); }, carDrawables: function () { return RRRender.carDrawables(); }, carDraws: function () { return RRRender.carDraws(); }, carModel: function () { return RRRender.carModel(); }, nozzlesVisibleFrom: function (x, y, z) { return RRRender.nozzlesVisibleFrom(x, y, z); }, cameraPos: function () { return RRRender.cameraPos(); }, studio: function (o) { RRRender.studio(o); }, project: function (x, y, z) { return RRRender.project(x, y, z); }, storeOk: function () { return storeOk; }
+    frameStats: function () { return { work: stats(app.frameMs, app.frameN), iv: stats(app.ivMs, app.frameN), gpuMs: app.gpuMs }; }, setTier: function (t, sc) { app.lockQuality = true; gov.tier = t; gov.scale = sc || 1; RRRender.applyGov(gov); }, unlockTier: function () { app.lockQuality = false; }, carScreenBox: function () { return RRRender.carScreenBox(); }, carContrast: function () { return RRRender.carContrast(); }, carHalfWidth: function () { return RRRender.carHalfWidth(); }, carDrawables: function () { return RRRender.carDrawables(); }, carDraws: function () { return RRRender.carDraws(); }, carModel: function () { return RRRender.carModel(); }, nozzlesVisibleFrom: function (x, y, z) { return RRRender.nozzlesVisibleFrom(x, y, z); }, cameraPos: function () { return RRRender.cameraPos(); }, studio: function (o) { RRRender.studio(o); }, project: function (x, y, z) { return RRRender.project(x, y, z); }, storeOk: function () { return storeOk; },
+    music: { toggle: function () { return mtog.toggle(); }, on: function () { return mtog.on; }, log: RRAudio.musicLog, seek: RRAudio.seek, level: RRAudio.musicLevel, render: RRAudio.renderLoop, C: RRAudio.C, duckValue: RRAudio.duckValue, play: function (n) { RRAudio.play(n); } }, version: 'v5'
   };
 })();
 
 </script>
-<!-- Three.js r180 (c) 2010-2025 Three.js Authors, MIT License. Roadster Rush v2 is an original game: no third-party game or car-maker code, art, audio, logos or names are used. -->
-<script>/* v4 offline install: only on https (the published site); file:// and http keep working as a plain page */ if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js');</script>
+<!-- Three.js r180 (c) 2010-2025 Three.js Authors, MIT License. Roadster Rush v5 is an original game: no third-party game or car-maker code, art, audio, music, logos or names are used. The music is an original composition generated in code (src/audio.js). -->
+<script>/* v5 offline install (from v4): only on https (the published site); file:// and http keep working as a plain page */ if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js');</script>
 </body></html>
