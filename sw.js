@@ -1,6 +1,6 @@
-/* Roadster Rush v6 service worker: cache-first precache of the same-origin game files so the game runs fully offline once installed.
+/* Roadster Rush v7 service worker: cache-first precache of the same-origin game files so the game runs fully offline once installed.
    No network calls beyond these files. Bump VERSION on every publish; activate deletes every older roadster-rush-* cache. */
-var VERSION = 'v6-1';
+var VERSION = 'v7-1';
 var CACHE = 'roadster-rush-' + VERSION;
 var FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon-180.png', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 self.addEventListener('install', function (e) {
