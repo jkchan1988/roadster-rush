@@ -80,7 +80,7 @@ button{font:inherit;color:#fff;border:0;cursor:pointer;touch-action:manipulation
   <div class="logo">ROADSTER<br>RUSH</div>
   <button class="big" id="playbtn" aria-label="Play"><span class="ic-play"></span></button>
   <div class="row"><div class="chip" id="bestChip"><span class="ic-trophy"></span><span id="best">0</span></div><button class="btn" id="mutebtn" aria-label="Sound on or off"><span class="ic-sound"></span></button><button class="btn musictog" id="musicbtn" aria-label="Music on or off"></button></div>
-  <div class="ver" id="ver" aria-hidden="true">v5</div>
+  <div class="ver" id="ver" aria-hidden="true">v6</div>
 </div>
 <div id="paused" class="panel hidden">
   <button class="big" id="resumebtn" aria-label="Resume"><span class="ic-play"></span></button>
@@ -4326,12 +4326,14 @@ if (typeof module !== 'undefined') module.exports = RRLogic;
 </script>
 <script>
 /*AUDIO-START*/
-/* Roadster Rush v5 — procedural WebAudio (no files, no network, no third-party music).
-   SFX (unchanged from v4) + engine whine/wind + v5 ORIGINAL synthwave loop "Moon Run" (composed for this game, generated in code):
+/* Roadster Rush v6 — procedural WebAudio (no files, no network, no third-party music).
+   SFX (from v4) + engine whine/wind + ORIGINAL synthwave loop "Moon Run" (composed for this game, generated in code):
    104 BPM, 16 bars of 4/4 in A minor: Am | F | C | G | Am | F | Dm | E (2 bars each). Octave/arpeggiated saw bass, detuned saw pads,
    a delayed square arp, four-on-the-floor kick, gated-reverb style snare, hats, a fill into the loop point.
    Every note time is t0 + n * S16 from an integer step counter on the AudioContext clock, so a loop boundary is just n = 256k:
-   no drift, no gap and no overlap by construction. Music has its own bus (0.35 x the SFX bus) with sidechain-style ducking on SFX. */
+   no drift, no gap and no overlap by construction. Music has its own bus (0.35 x the SFX bus) with sidechain-style ducking on SFX.
+   v6 rebuilds the AudioContext unlock/resume path for iOS/iPadOS Safari: one touch creates the graph, primes a silent buffer,
+   awaits resume(), flushes queued SFX, and starts music — never schedule into a suspended context (WebKit drops those nodes). */
 var RRAudio = (function () {
   var ctx = null, master = null, sfx = null, musicBus = null, duckNode = null, noiseBuf = null, muted = false, counts = {}, sfxPlayed = 0;
   var SFX_LEVEL = 0.9, MUSIC_REL = 0.35, MUSIC_LEVEL = SFX_LEVEL * MUSIC_REL;
@@ -4339,8 +4341,10 @@ var RRAudio = (function () {
   var DUCK = { depth: 0.5 /* -6.0 dB */, attack: 0.012, hold: 0.06, release: 0.3 };
   var mus = { pref: true, gestured: false, hidden: false, playing: false, sess: null, t0: 0, n: 0, timer: null, loops: 0, late: 0, lastCall: 0, maxGapMs: 0, sched: 0, schedMs: 0, log: new Float64Array(1024), logN: 0 };
   var duck = { g0: 1, t: -1e9, n: 0 };
-  function init() {
-    if (ctx) { if (ctx.state === 'suspended' && !mus.hidden) { try { ctx.resume(); } catch (e) {} } return; }
+  /* ---- AudioBoot (v6 rewrite): one API for iOS-safe create → silent unlock → resume → flush ---- */
+  var boot = { primed: false, resumeP: null, pending: [], unlockTicks: 0 };
+  function buildGraph() {
+    if (ctx) return;
     var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
     ctx = new AC();
     var comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4; comp.connect(ctx.destination);
@@ -4350,6 +4354,39 @@ var RRAudio = (function () {
     duckNode = ctx.createGain(); duckNode.gain.value = 1; duckNode.connect(musicBus);
     noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate); var d = noiseBuf.getChannelData(0); for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
   }
+  function silentUnlock() {
+    // WebKit: starting any BufferSource during the gesture turn unlocks the audio hardware.
+    if (!ctx || boot.primed) return;
+    try {
+      var b = ctx.createBuffer(1, 1, ctx.sampleRate || 44100);
+      var s = ctx.createBufferSource(); s.buffer = b; s.connect(master); s.start(0);
+      boot.primed = true;
+    } catch (e) {}
+  }
+  function flushPending() {
+    if (!ctx || muted || ctx.state !== 'running') return;
+    var q = boot.pending; boot.pending = [];
+    for (var i = 0; i < q.length; i++) {
+      try { var t0 = ctx.currentTime + 0.005; SFX[q[i].n](t0, q[i].a); sfxPlayed++; if (mus.playing) duckTrigger(t0); } catch (e) {}
+    }
+  }
+  function whenRunning(cb) {
+    if (!ctx || mus.hidden) return Promise.resolve(false);
+    if (ctx.state === 'running') { flushPending(); if (cb) cb(); return Promise.resolve(true); }
+    silentUnlock();
+    if (boot.resumeP) return boot.resumeP.then(function (ok) { if (ok && cb) cb(); return ok; });
+    var p;
+    try { p = ctx.resume(); } catch (e) { return Promise.resolve(false); }
+    boot.resumeP = Promise.resolve(p).then(function () {
+      boot.resumeP = null;
+      var ok = !!(ctx && ctx.state === 'running');
+      if (ok) { flushPending(); if (cb) cb(); }
+      return ok;
+    }).catch(function () { boot.resumeP = null; return false; });
+    return boot.resumeP;
+  }
+  function init() { buildGraph(); /* create only — resume must be in a gesture turn (iOS) */ }
+  function ensureRunning() { buildGraph(); silentUnlock(); return whenRunning(); }
   function tone(f, t0, dur, type, vol, f2, dest) {
     var o = ctx.createOscillator(), g = ctx.createGain(); o.type = type || 'sine'; o.frequency.setValueAtTime(f, t0); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t0 + dur);
     g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
@@ -4397,7 +4434,14 @@ var RRAudio = (function () {
     duck.g0 = g0; duck.t = t; duck.n++;
   }
   function play(name, a) {
-    counts[name] = (counts[name] || 0) + 1; if (!ctx || muted || !SFX[name]) return;
+    counts[name] = (counts[name] || 0) + 1; if (muted || !SFX[name]) return;
+    buildGraph(); if (!ctx) return;
+    if (ctx.state !== 'running') {
+      // Never schedule into a suspended graph — WebKit drops those nodes. Queue only; resume only if already gestured.
+      if (boot.pending.length < 8) boot.pending.push({ n: name, a: a });
+      if (mus.gestured && !mus.hidden) whenRunning();
+      return;
+    }
     try { var t = ctx.currentTime + 0.005; SFX[name](t, a); sfxPlayed++; if (mus.playing) duckTrigger(t); } catch (e) {}
   }
   // ---- "Moon Run": original composition ----
@@ -4487,14 +4531,25 @@ var RRAudio = (function () {
     S.g.gain.cancelScheduledValues(t); S.g.gain.setValueAtTime(S.g.gain.value, t); S.g.gain.linearRampToValueAtTime(0, t + 0.08);
     setTimeout(function () { S.nodes.forEach(function (n) { try { n.disconnect(); } catch (e) {} }); }, Math.ceil((LOOKAHEAD + 0.6) * 1000));
   }
-  function refresh() { var w = wanted(); if (w && !mus.playing) startMusic(); else if (!w && mus.playing) stopMusic(); }
-  function gesture(noMusic) { mus.gestured = true; init(); if (!noMusic) refresh(); }
+  function refresh() { var w = wanted(); if (w && ctx && ctx.state === 'running' && !mus.playing) startMusic(); else if (!w && mus.playing) stopMusic(); }
+  function gesture(noMusic) {
+    // Call from a real user-gesture handler. Builds graph, silent-unlocks, resumes; starts music unless noMusic (music button unlock-only).
+    mus.gestured = true; boot.unlockTicks++;
+    buildGraph(); silentUnlock();
+    return whenRunning(function () { if (!noMusic) refresh(); });
+  }
   function seek(n) { if (!mus.playing) return false; stopMusic(); startMusic(n); return true; } // test hook: restart the loop at step n on the same grid math (lets e2e reach a loop boundary in seconds)
-  function setMusic(on) { mus.pref = !!on; refresh(); }
-  // hidden tab: suspend the AudioContext. Its clock stops, so the already-scheduled notes and the step grid resume exactly where they paused (no restart, no gap).
-  function setHidden(h) { mus.hidden = !!h; if (!ctx) return; try { if (h) ctx.suspend(); else ctx.resume(); } catch (e) {} }
-  function music() { /* v4 API kept for callers: v5 music runs on every screen once the player has touched the game (see refresh) */ }
-  function setMuted(m) { muted = m; if (master) master.gain.setTargetAtTime(m ? 0 : 0.8, ctx.currentTime, 0.02); refresh(); }
+  function setMusic(on) { mus.pref = !!on; refresh(); if (mus.gestured && ctx && ctx.state !== 'running' && !mus.hidden) whenRunning(function () { refresh(); }); }
+  // Hidden tab: suspend the clock so scheduled notes resume in place. On show, try resume (may fail outside a gesture on iOS); next gesture() always re-kicks.
+  function setHidden(h) {
+    mus.hidden = !!h; if (!ctx) return;
+    try {
+      if (h) ctx.suspend();
+      else whenRunning(function () { if (mus.gestured) refresh(); });
+    } catch (e) {}
+  }
+  function music() { /* v4 API kept: music runs on every screen once gestured (see refresh) */ }
+  function setMuted(m) { muted = m; if (master && ctx) master.gain.setTargetAtTime(m ? 0 : 0.8, ctx.currentTime, 0.02); refresh(); }
   // continuous layers: electric drive whine (pitch follows speed) + wind noise (gain follows speed), updated per frame without allocation
   var drive = null;
   function engine(on, sp, boost) {
@@ -4523,11 +4578,13 @@ var RRAudio = (function () {
     return oc.startRendering();
   }
   function state() { return { ctx: ctx ? ctx.state : 'none', counts: counts, sfxPlayed: sfxPlayed, muted: muted, music: mus.playing, musicPref: mus.pref, gestured: mus.gestured, hidden: mus.hidden, drive: !!drive,
-    steps: mus.n, sched: mus.sched, maxGapMs: mus.maxGapMs, loops: mus.loops, late: mus.late, schedMs: mus.schedMs, duckN: duck.n, now: ctx ? ctx.currentTime : 0, duckGain: ctx ? duckValue(duck.g0, ctx.currentTime - duck.t) : 1, musicBusGain: musicBus ? musicBus.gain.value : 0 }; }
+    steps: mus.n, sched: mus.sched, maxGapMs: mus.maxGapMs, loops: mus.loops, late: mus.late, schedMs: mus.schedMs, duckN: duck.n, now: ctx ? ctx.currentTime : 0, duckGain: ctx ? duckValue(duck.g0, ctx.currentTime - duck.t) : 1, musicBusGain: musicBus ? musicBus.gain.value : 0,
+    primed: boot.primed, pending: boot.pending.length, unlockTicks: boot.unlockTicks }; }
   return { init: init, play: play, music: music, setMuted: setMuted, state: state, engine: engine, gesture: gesture, setMusic: setMusic, setHidden: setHidden, schedule: schedule, seek: seek,
-    musicLevel: musicLevel, musicLog: musicLog, renderLoop: renderLoop, duckValue: duckValue, C: { BPM: BPM, S16: S16, STEPS: STEPS, LOOP: LOOP, LOOKAHEAD: LOOKAHEAD, DUCK: DUCK, SFX_LEVEL: SFX_LEVEL, MUSIC_REL: MUSIC_REL, MUSIC_LEVEL: MUSIC_LEVEL } };
+    musicLevel: musicLevel, musicLog: musicLog, renderLoop: renderLoop, duckValue: duckValue, ensureRunning: ensureRunning,
+    C: { BPM: BPM, S16: S16, STEPS: STEPS, LOOP: LOOP, LOOKAHEAD: LOOKAHEAD, DUCK: DUCK, SFX_LEVEL: SFX_LEVEL, MUSIC_REL: MUSIC_REL, MUSIC_LEVEL: MUSIC_LEVEL } };
 })();
-// v5 music toggle controller (pure: storage + audio injected, so the unit tests drive it with fake events). Key 'rrush.music' = '1' | '0', nothing else stored.
+// v5/v6 music toggle controller (pure: storage + audio injected, so the unit tests drive it with fake events). Key 'rrush.music' = '1' | '0', nothing else stored.
 var RRMusicToggle = function (store, audio, onChange) {
   var raw = null; try { raw = store.get('rrush.music'); } catch (e) {}
   var t = { on: raw !== '0', key: 'rrush.music' };
@@ -5356,7 +5413,7 @@ var RRRender = (function () {
   return R;
 })();
 
-/* Roadster Rush v5 (app shell from v2-v4; v5 adds the music toggle) — app shell: screens, input, 120 Hz fixed-step loop + interpolation, hit-stop, haptics, adaptive governor, GPU timer, perf overlay, teach-by-play prompts, threat warnings, test hooks. */
+/* Roadster Rush v6 (app shell from v2-v5; v6 hardens iOS Web Audio unlock/resume) — app shell: screens, input, 120 Hz fixed-step loop + interpolation, hit-stop, haptics, adaptive governor, GPU timer, perf overlay, teach-by-play prompts, threat warnings, test hooks. */
 (function () {
   var L = RRLogic, $ = function (id) { return document.getElementById(id); };
   var ICON = {
@@ -5403,13 +5460,19 @@ var RRRender = (function () {
   function setMusicIcons(on) { MUSIC_BTNS.forEach(function (id) { var b = $(id); b.innerHTML = on ? ICON.note : ICON.noteoff; b.setAttribute('aria-pressed', on ? 'true' : 'false'); b.classList.toggle('off', !on); }); }
   var mtog = RRMusicToggle({ get: sget, set: sset }, RRAudio, setMusicIcons); setMusicIcons(mtog.on);
   MUSIC_BTNS.forEach(function (id) { $(id).addEventListener('pointerdown', function (e) { mtog.onPointer(e); }); });
-  // first user gesture unlocks audio (iOS rule): music never starts before this. A tap on the music button itself only unlocks; the button decides.
-  function unlock(e) { var tog = !!(e.target && e.target.closest && e.target.closest('.musictog')) || e.code === 'KeyM'; RRAudio.gesture(tog); }
-  ['pointerdown', 'touchend', 'keydown'].forEach(function (t) { window.addEventListener(t, unlock, true); });
+  // v6 first user gesture unlocks audio (iOS/WebKit rule): create+prime+resume must run in the same gesture turn.
+  // Listen on pointerdown AND pointerup/touchend/click — some iOS versions only count touchend/click as activation; pointerdown alone can leave ctx suspended.
+  // A tap on the music button itself only unlocks; the button decides whether music is on.
+  function unlock(e) {
+    var tog = !!(e.target && e.target.closest && e.target.closest('.musictog')) || e.code === 'KeyM';
+    RRAudio.gesture(tog);
+  }
+  ['pointerdown', 'pointerup', 'touchstart', 'touchend', 'click', 'keydown'].forEach(function (t) { window.addEventListener(t, unlock, true); });
   $('best').textContent = app.best;
   function show(id) { ['title', 'paused', 'over'].forEach(function (s) { $(s).classList.toggle('hidden', s !== id); }); $('hud').classList.toggle('hidden', !(app.screen === 'play')); }
   function startRun(seed) {
-    RRAudio.init(); RRAudio.play('tap');
+    // v6: explicit gesture unlock in this tap turn (Play), then SFX; music starts via wanted() once ctx is running
+    RRAudio.gesture(false); RRAudio.ensureRunning(); RRAudio.play('tap');
     game.reset(seed != null ? seed : ((Date.now() * 7) & 0xffffff) + 1); game.start();
     app.taught = {}; app.screen = 'play'; app.paused = false; app.newBest = false; app.hitStop = 0; app.overT = 0; app.runs++; sset('rrush.runs', app.runs);
     show(null); $('hud').classList.remove('hidden');
@@ -5417,7 +5480,7 @@ var RRRender = (function () {
     RRAudio.music(true);
   }
   function pause() { if (app.screen !== 'play' || app.paused) return; RRAudio.engine(false, 0, 0); app.paused = true; show('paused'); $('hud').classList.remove('hidden'); RRAudio.music(false); }
-  function resume() { if (!app.paused) return; RRAudio.init(); RRAudio.play('tap'); app.paused = false; show(null); $('hud').classList.remove('hidden'); RRAudio.music(true); last = performance.now(); }
+  function resume() { if (!app.paused) return; RRAudio.gesture(false); RRAudio.ensureRunning(); RRAudio.play('tap'); app.paused = false; show(null); $('hud').classList.remove('hidden'); RRAudio.music(true); last = performance.now(); }
   function home() { RRAudio.play('tap'); RRAudio.engine(false, 0, 0); app.screen = 'title'; app.paused = false; game.reset(game.seed + 1); show('title'); $('hud').classList.add('hidden'); $('hint').classList.add('hidden'); $('best').textContent = app.best; RRAudio.music(false); }
   function gameOver() {
     app.screen = 'over'; app.overT = 0; app.overAt = performance.now(); app.crashT = 0; RRAudio.music(false); RRAudio.engine(false, 0, 0);
@@ -5434,7 +5497,7 @@ var RRRender = (function () {
   tapBtn('restartbtn', function () { startRun(); });
   tapBtn('homebtn', home); tapBtn('homebtn2', home);
   tapBtn('pausebtn', function () { RRAudio.play('tap'); pause(); });
-  function toggleMute() { app.muted = !app.muted; sset('rrush.mute', app.muted ? '1' : '0'); RRAudio.init(); RRAudio.setMuted(app.muted); setMuteIcons(); RRAudio.play('tap'); }
+  function toggleMute() { app.muted = !app.muted; sset('rrush.mute', app.muted ? '1' : '0'); RRAudio.gesture(true); RRAudio.ensureRunning(); RRAudio.setMuted(app.muted); setMuteIcons(); RRAudio.play('tap'); }
   tapBtn('mutebtn', toggleMute); tapBtn('mutebtn2', toggleMute);
   // title & game-over panels: tapping empty space also starts (no dead ends)
   $('title').addEventListener('pointerdown', function (e) { if (e.target === $('title') || e.target.classList.contains('logo')) startRun(); });
@@ -5463,7 +5526,12 @@ var RRRender = (function () {
     if (e.code === 'Enter' || (e.code === 'Space' && app.screen !== 'play')) { e.preventDefault(); if (app.screen === 'title' || (app.screen === 'over' && app.overT > 0.8)) startRun(); else if (app.paused) resume(); return; }
     var a = KEYS[e.code]; if (a) { e.preventDefault(); act(a, 'keys'); }
   });
-  document.addEventListener('visibilitychange', function () { RRAudio.setHidden(document.hidden); if (document.hidden) pause(); });
+  // v6: on return from background, try resume; if iOS left ctx suspended, the next tap's unlock() will gesture again (no second intentional tap required for Play — Play itself is the gesture).
+  document.addEventListener('visibilitychange', function () {
+    RRAudio.setHidden(document.hidden);
+    if (document.hidden) pause();
+    else { RRAudio.ensureRunning(); }
+  });
   window.addEventListener('blur', pause);
   window.addEventListener('resize', function () { RRRender.resize(); });
   window.addEventListener('orientationchange', function () { setTimeout(RRRender.resize, 200); });
@@ -5555,11 +5623,11 @@ var RRRender = (function () {
     start: startRun, pause: pause, resume: resume, home: home,
     setBot: function (on) { app.bot = !!on; }, gov: function () { return gov; }, feedback: RRFeedback, perfToggle: perfToggle, perfText: function () { return perfEl.textContent; },
     frameStats: function () { return { work: stats(app.frameMs, app.frameN), iv: stats(app.ivMs, app.frameN), gpuMs: app.gpuMs }; }, setTier: function (t, sc) { app.lockQuality = true; gov.tier = t; gov.scale = sc || 1; RRRender.applyGov(gov); }, unlockTier: function () { app.lockQuality = false; }, carScreenBox: function () { return RRRender.carScreenBox(); }, carContrast: function () { return RRRender.carContrast(); }, carHalfWidth: function () { return RRRender.carHalfWidth(); }, carDrawables: function () { return RRRender.carDrawables(); }, carDraws: function () { return RRRender.carDraws(); }, carModel: function () { return RRRender.carModel(); }, nozzlesVisibleFrom: function (x, y, z) { return RRRender.nozzlesVisibleFrom(x, y, z); }, cameraPos: function () { return RRRender.cameraPos(); }, studio: function (o) { RRRender.studio(o); }, project: function (x, y, z) { return RRRender.project(x, y, z); }, storeOk: function () { return storeOk; },
-    music: { toggle: function () { return mtog.toggle(); }, on: function () { return mtog.on; }, log: RRAudio.musicLog, seek: RRAudio.seek, level: RRAudio.musicLevel, render: RRAudio.renderLoop, C: RRAudio.C, duckValue: RRAudio.duckValue, play: function (n) { RRAudio.play(n); } }, version: 'v5'
+    music: { toggle: function () { return mtog.toggle(); }, on: function () { return mtog.on; }, log: RRAudio.musicLog, seek: RRAudio.seek, level: RRAudio.musicLevel, render: RRAudio.renderLoop, C: RRAudio.C, duckValue: RRAudio.duckValue, play: function (n) { RRAudio.play(n); } }, ensureAudio: function () { return RRAudio.ensureRunning(); }, version: 'v6'
   };
 })();
 
 </script>
-<!-- Three.js r180 (c) 2010-2025 Three.js Authors, MIT License. Roadster Rush v5 is an original game: no third-party game or car-maker code, art, audio, music, logos or names are used. The music is an original composition generated in code (src/audio.js). -->
-<script>/* v5 offline install (from v4): only on https (the published site); file:// and http keep working as a plain page */ if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js');</script>
+<!-- Three.js r180 (c) 2010-2025 Three.js Authors, MIT License. Roadster Rush v6 is an original game: no third-party game or car-maker code, art, audio, music, logos or names are used. The music is an original composition generated in code (src/audio.js). -->
+<script>/* v6 offline install (from v4/v5): only on https (the published site); file:// and http keep working as a plain page */ if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js');</script>
 </body></html>
