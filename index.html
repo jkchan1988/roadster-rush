@@ -4,79 +4,125 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob: 'self'; manifest-src 'self'; worker-src 'self'; connect-src 'none'; media-src 'none'; font-src 'none'; frame-src 'none'; form-action 'none'">
 <title>Roadster Rush</title>
-<meta name="theme-color" content="#2a1850">
+<meta name="theme-color" content="#000000">
 <link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Roadster Rush">
 <style>
-:root{--sat:env(safe-area-inset-top,0px);--sar:env(safe-area-inset-right,0px);--sab:env(safe-area-inset-bottom,0px);--sal:env(safe-area-inset-left,0px)}
+:root{--sat:env(safe-area-inset-top,0px);--sar:env(safe-area-inset-right,0px);--sab:env(safe-area-inset-bottom,0px);--sal:env(safe-area-inset-left,0px);--red:#ff1a1a;--red2:#e60000;--lbl:#ff4d4d;--maroon:#2a0707;--line:#6a1212;--ink:#000;--fx:cubic-bezier(.2,.7,.2,1)}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
-html,body{margin:0;height:100%;overflow:hidden;background:#140c2a;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#fff;touch-action:none;overscroll-behavior:none}
+html,body{margin:0;height:100%;overflow:hidden;background:#000;font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;color:#fff;touch-action:none;overscroll-behavior:none}
 #game{position:fixed;inset:0}#game canvas{display:block;touch-action:none}
 .hidden{display:none!important}
-button{font:inherit;color:#fff;border:0;cursor:pointer;touch-action:manipulation}
-.btn{width:76px;height:76px;border-radius:24px;background:rgba(30,18,64,.72);box-shadow:0 4px 0 rgba(0,0,0,.35),inset 0 0 0 3px rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
-.btn svg{width:42px;height:42px}
-.big{width:150px;height:150px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#7ff6ff,#22b6ff 55%,#1a62e0);box-shadow:0 8px 0 #0d3a8a,0 0 40px rgba(127,246,255,.7);display:flex;align-items:center;justify-content:center;animation:pulse 1.4s ease-in-out infinite}
-.big svg{width:80px;height:80px;filter:drop-shadow(0 3px 0 rgba(0,0,0,.25))}
-.big:active{transform:translateY(4px) scale(.97);box-shadow:0 4px 0 #0d3a8a}
-@keyframes pulse{50%{transform:scale(1.06)}}
-@media (prefers-reduced-motion:reduce){.big,.hand,.burst{animation:none!important}}
-.panel{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:calc(var(--sat) + 16px) calc(var(--sar) + 16px) calc(var(--sab) + 16px) calc(var(--sal) + 16px);background:radial-gradient(ellipse at center,rgba(20,10,50,.15),rgba(20,10,50,.6))}
-.logo{font-weight:900;font-size:clamp(34px,10vw,64px);letter-spacing:1px;line-height:.95;text-align:center;background:linear-gradient(#fff,#bfefff 50%,#7fd3ff);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 4px 0 #3a1d8a) drop-shadow(0 0 18px rgba(127,211,255,.6))}
-.row{display:flex;gap:18px;align-items:center;justify-content:center}
-.chip{display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:999px;background:rgba(30,18,64,.72);font-weight:800;font-size:26px;box-shadow:inset 0 0 0 2px rgba(255,255,255,.15)}
-.chip svg{width:30px;height:30px}
+.sr{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+button{font:inherit;color:#fff;border:0;border-radius:0;cursor:pointer;touch-action:manipulation}
+/* ---- cockpit tokens: pure black panels, one saturated red accent, sharp corners, 1px dim-red borders, wide-tracked small caps ---- */
+.cap{font-size:12px;font-weight:700;letter-spacing:.24em;text-transform:uppercase;color:var(--lbl)}
+.btn{width:76px;height:76px;background:rgba(0,0,0,.82);border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:background .12s linear,border-color .12s linear}
+.btn svg{width:40px;height:40px;filter:saturate(0) brightness(1.7)}
+.btn:active,.btn.on{background:var(--red2);border-color:var(--red)}
+.btn:focus-visible,.seg button:focus-visible{outline:2px solid var(--red);outline-offset:2px}
+.musictog.off{background:rgba(0,0,0,.82);opacity:.7}
+.big{width:148px;height:148px;background:var(--red2);border:1px solid var(--red);display:flex;align-items:center;justify-content:center;animation:rpulse 1.6s ease-in-out infinite}
+.big svg{width:76px;height:76px}.big svg *{fill:#fff!important;stroke:#fff!important}.big svg path[stroke]{fill:none!important}
+.big:active{background:var(--red);animation:none}
+@keyframes rpulse{50%{box-shadow:0 0 0 7px rgba(255,26,26,.28),0 0 26px rgba(255,26,26,.55)}}
+@media (prefers-reduced-motion:reduce){.big,.hand,.burst,.co .dm{animation:none!important}}
+.panel{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:calc(var(--sat) + 16px) calc(var(--sar) + 16px) calc(var(--sab) + 16px) calc(var(--sal) + 16px);background:rgba(0,0,0,.78)}
+.panel>*{pointer-events:auto}
+#title{background:transparent;justify-content:space-between;align-items:stretch;pointer-events:none}
+#title .top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;pointer-events:none;animation:slin .45s var(--fx) both}
+.logo{line-height:1;color:var(--red)}.logo .rf{display:block;max-width:60vw;height:auto}
+.logo small{display:block;margin-top:8px}
+#title .bot{display:flex;flex-direction:column;align-items:center;gap:16px;padding-bottom:6px}
+#title .bot>*{animation:slin .5s var(--fx) both}#title .bot>:nth-child(2){animation-delay:.07s}#title .bot>:nth-child(3){animation-delay:.14s}
+@keyframes slin{from{opacity:0;transform:translateX(-26px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){#title .top,#title .bot>*{animation:none!important}}
+.row{display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap}
+.chip{display:flex;align-items:center;gap:10px;min-height:44px;padding:6px 14px;background:rgba(0,0,0,.82);border:1px solid var(--line);font-weight:700;font-size:24px;color:var(--red)}
+.chip [class*=ic-] svg{width:26px;height:26px}
+.dg{display:inline-flex;gap:3px;align-items:center}
+.dgt .o{stroke:var(--red);stroke-width:1.05;stroke-linejoin:miter}.dgt .i{stroke:#000;stroke-width:.45;stroke-linejoin:miter}
+.seg{display:flex;gap:0;border:1px solid var(--line);background:rgba(0,0,0,.82)}
+.seg button{width:84px;height:76px;background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button.on{background:var(--red2)}
+.seg .sw{width:30px;height:18px;border:1px solid var(--red);display:block}.seg .w{background:#f3f4f6}.seg .b{background:#050506}
+.seg .cap{color:#fff;font-size:11px}.seg button:not(.on) .cap{color:var(--lbl)}
+.gear{display:flex;gap:0;border:1px solid var(--line);background:rgba(0,0,0,.82)}
+.gear b{display:block;width:30px;height:30px;line-height:30px;text-align:center;font-size:14px;font-weight:700;letter-spacing:0;color:var(--lbl)}
+.gear b.on{background:var(--red2);color:#fff}
+.ver{position:absolute;right:calc(var(--sar) + 14px);bottom:calc(var(--sab) + 10px);font-size:12px;font-weight:700;letter-spacing:.2em;color:var(--lbl);opacity:.7;pointer-events:none}
+#callouts{position:fixed;inset:0;pointer-events:none;overflow:hidden}
+.co{position:absolute;left:0;top:0;will-change:transform;opacity:0;transition:opacity .18s linear}.co.on{opacity:1}
+.co .dm{position:absolute;left:-7px;top:-7px;width:14px;height:14px;background:var(--red);transform:rotate(45deg);box-shadow:0 0 0 4px rgba(255,26,26,.28);animation:dmp 1.5s ease-in-out infinite}
+@keyframes dmp{50%{box-shadow:0 0 0 8px rgba(255,26,26,.1)}}
+.co .ln{position:absolute;left:0;top:0;width:46px;height:1px;background:var(--red);transform-origin:0 0;transform:rotate(-32deg)}
+.co .lb{position:absolute;left:40px;top:-46px;white-space:nowrap;background:rgba(0,0,0,.86);border:1px solid var(--line);border-left:3px solid var(--red);padding:5px 10px 5px 9px;display:flex;gap:8px;align-items:baseline}
+.co .lb em{font-style:normal;font-size:13px;font-weight:700;letter-spacing:.22em;color:#fff}.co .lb u{text-decoration:none;font-size:11px;font-weight:700;letter-spacing:.2em;color:var(--lbl)}
+@media (max-aspect-ratio:4/5){.co[data-id=wing]{display:none}}
+.co.left .ln{transform:rotate(-148deg)}.co.left .lb{left:auto;right:40px}
 #hud{position:fixed;inset:0;pointer-events:none}
 #hud .tl{position:absolute;top:calc(var(--sat) + 10px);left:calc(var(--sal) + 10px);display:flex;flex-direction:column;gap:8px;align-items:flex-start}
-#hud .tr{position:absolute;top:calc(var(--sat) + 10px);right:calc(var(--sar) + 10px);pointer-events:auto;display:flex;gap:12px}
-.musictog.off{background:rgba(30,18,64,.5)}
-.ver{position:absolute;right:calc(var(--sar) + 14px);bottom:calc(var(--sab) + 10px);font-size:13px;font-weight:700;opacity:.5;pointer-events:none;letter-spacing:.5px}
-#score{font-size:30px;font-variant-numeric:tabular-nums;min-width:120px}
-#coinsChip{font-size:24px}
+#hud .tr{position:absolute;top:calc(var(--sat) + 10px);right:calc(var(--sar) + 10px);pointer-events:auto;display:flex;gap:10px}
+#scoreChip,#coinsChip{padding:6px 14px 8px;min-width:120px;flex-direction:column;align-items:flex-start;gap:2px}
+#scoreChip .cap,#coinsChip .cap{font-size:10px;display:flex;gap:6px;align-items:center}
+#score,#coins{min-height:26px}
+#coinsChip .cr{display:flex;align-items:center;gap:8px}
+#prog{position:absolute;left:0;right:0;top:0;height:3px;background:var(--maroon)}
+#prog i{display:block;height:100%;width:100%;background:var(--red);transform-origin:0 50%;transform:scaleX(0)}
+#prog b{position:absolute;right:0;top:0;width:3px;height:9px;background:var(--red)}
+#speed{position:absolute;left:calc(var(--sal) + 12px);bottom:calc(var(--sab) + 12px);display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+#speed .row{justify-content:flex-start;gap:10px;align-items:flex-end;flex-wrap:nowrap}
+#spd{display:flex;align-items:flex-end;padding:4px 10px 6px;background:rgba(0,0,0,.82);border:1px solid var(--line);min-width:112px;justify-content:flex-end}
 #pows{position:absolute;bottom:calc(var(--sab) + 16px);left:50%;transform:translateX(-50%);display:flex;gap:10px}
-.pw{width:64px;height:64px;border-radius:20px;background:rgba(30,18,64,.72);position:relative;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 0 0 2px rgba(255,255,255,.2)}
-.pw svg{width:38px;height:38px}.pw i{position:absolute;left:6px;right:6px;bottom:5px;height:5px;border-radius:3px;background:#7ff6ff;transform-origin:left}
-#mult{position:absolute;top:calc(var(--sat) + 96px);right:calc(var(--sar) + 14px);font-size:34px;font-weight:900;color:#ffd34d;text-shadow:0 3px 0 #6b2bd1}
-#danger{position:absolute;inset:0;box-shadow:inset 0 0 80px 20px rgba(255,120,60,.0);transition:box-shadow .2s}
-#danger.on{box-shadow:inset 0 0 90px 24px rgba(255,140,60,.45)}
+.pw{width:64px;height:64px;background:rgba(0,0,0,.86);border:1px solid var(--line);position:relative;display:flex;align-items:flex-start;justify-content:center;padding-top:7px}
+.pw svg{width:32px;height:32px}.pw i{position:absolute;left:6px;right:10px;bottom:6px;height:8px;background:var(--red);transform-origin:left}
+.pw::before{content:"";position:absolute;left:5px;right:9px;bottom:5px;height:10px;border:1px solid var(--line)}.pw::after{content:"";position:absolute;right:5px;bottom:8px;width:3px;height:4px;background:var(--line)}
+.pw i{z-index:1;height:6px;bottom:7px;left:7px;right:11px}
+#mult{position:absolute;top:calc(var(--sat) + 96px);right:calc(var(--sar) + 14px);font-size:34px;font-weight:700;letter-spacing:.04em;color:var(--red);background:rgba(0,0,0,.82);border:1px solid var(--line);padding:2px 12px;font-variant-numeric:tabular-nums}
+#danger{position:absolute;inset:0;box-shadow:inset 0 0 80px 20px rgba(255,26,26,0);transition:box-shadow .2s}
+#danger.on{box-shadow:inset 0 0 90px 24px rgba(255,26,26,.45)}
 .hand{position:absolute;left:50%;top:58%;width:90px;height:90px;margin-left:-45px;animation:swipe 2.4s ease-in-out infinite;opacity:.95}
 @keyframes swipe{0%{transform:translate(0,0)}20%{transform:translate(-70px,0)}40%{transform:translate(70px,0)}60%{transform:translate(0,-70px)}80%{transform:translate(0,50px)}100%{transform:translate(0,0)}}
 #hint{position:fixed;inset:0;pointer-events:none}
-.arrows{position:absolute;left:50%;top:58%;transform:translate(-50%,-50%);width:240px;height:240px;opacity:.55}
-.big-score{font-size:64px;font-weight:900;text-shadow:0 5px 0 #3a1d8a}
-.burst{font-size:30px;font-weight:900;color:#ffd34d;animation:pulse .6s ease-in-out infinite;text-shadow:0 3px 0 #6b2bd1}
-#flash{position:fixed;inset:0;background:radial-gradient(circle at 50% 70%,rgba(255,214,150,.0),rgba(255,140,190,.9));opacity:0;pointer-events:none}
-#over:not(.hidden){animation:rrfade .5s cubic-bezier(.2,.8,.3,1) both}
-#over:not(.hidden)>*{animation:rrpop .55s cubic-bezier(.3,1.5,.5,1) both}
+.arrows{position:absolute;left:50%;top:58%;transform:translate(-50%,-50%);width:240px;height:240px;opacity:.7}.arrows{stroke:var(--red)}
+.big-score{display:flex;justify-content:center}
+.burst{display:flex;align-items:center;gap:10px;font-size:22px;font-weight:700;letter-spacing:.24em;color:#fff;background:var(--red2);padding:6px 16px;animation:rpulse .9s ease-in-out infinite}
+.burst svg *{fill:#fff!important}
+#flash{position:fixed;inset:0;background:radial-gradient(circle at 50% 70%,rgba(255,26,26,0),rgba(255,26,26,.85));opacity:0;pointer-events:none}
+#paused:not(.hidden),#over:not(.hidden){animation:rrfade .25s linear both}
+#over:not(.hidden)>*,#paused:not(.hidden)>*{animation:slin .4s var(--fx) both}
+#over:not(.hidden)>:nth-child(2),#paused:not(.hidden)>:nth-child(2){animation-delay:.05s}#over:not(.hidden)>:nth-child(3){animation-delay:.1s}#over:not(.hidden)>:nth-child(4){animation-delay:.15s}
 @keyframes rrfade{from{opacity:0}to{opacity:1}}
-@keyframes rrpop{from{transform:scale(.9)}to{transform:scale(1)}}
-@media (prefers-reduced-motion:reduce){#over:not(.hidden),#over:not(.hidden)>*{animation-duration:.01s}}
-#pops{position:fixed;left:50%;top:38%;transform:translateX(-50%);pointer-events:none;font-size:40px;font-weight:900;color:#ffd34d;text-shadow:0 3px 0 #6b2bd1}
-.tut{position:fixed;left:50%;top:44%;width:132px;height:132px;margin-left:-66px;border-radius:50%;background:rgba(30,18,64,.6);box-shadow:0 0 0 5px rgba(255,255,255,.85),0 0 40px rgba(127,246,255,.8);display:flex;align-items:center;justify-content:center;pointer-events:none;animation:pulse .7s ease-in-out infinite}
-.tut svg{width:92px;height:92px}.tut.up svg{animation:nudgeU .7s ease-in-out infinite}.tut.down svg{animation:nudgeD .7s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){#paused:not(.hidden),#over:not(.hidden),#over:not(.hidden)>*,#paused:not(.hidden)>*{animation-duration:.01s;animation-delay:0s!important}}
+#pops{position:fixed;left:50%;top:38%;transform:translateX(-50%);pointer-events:none;font-size:40px;font-weight:700;letter-spacing:.06em;color:#fff;background:var(--red2);padding:0 14px;transition:opacity .2s linear}
+.tut{position:fixed;left:50%;top:44%;width:132px;height:132px;margin-left:-66px;background:rgba(0,0,0,.82);border:1px solid var(--red);box-shadow:0 0 0 1px #000,0 0 32px rgba(255,26,26,.5);display:flex;align-items:center;justify-content:center;pointer-events:none}
+.tut{flex-direction:column}.tut b{font:700 11px/1.1 var(--ui,system-ui,sans-serif);letter-spacing:.12em;color:var(--lbl);margin-top:2px;text-align:center}.tut svg{width:84px;height:84px}.tut.up svg{animation:nudgeU .7s ease-in-out infinite}.tut.down svg{animation:nudgeD .7s ease-in-out infinite}
 @keyframes nudgeU{50%{transform:translateY(-10px)}}@keyframes nudgeD{50%{transform:translateY(10px)}}
-#warn{position:fixed;top:calc(var(--sat) + 76px);left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:4px;padding:6px 14px;border-radius:18px;background:rgba(255,60,60,.85);box-shadow:0 0 24px rgba(255,80,80,.8);pointer-events:none;animation:pulse .35s ease-in-out infinite}
-#tubewarn{position:fixed;left:50%;top:calc(var(--sat) + 120px);transform:translateX(-50%);display:flex;align-items:center;gap:10px;padding:10px 22px;border-radius:26px;background:rgba(40,44,56,.88);box-shadow:0 0 0 3px rgba(255,255,255,.55),0 0 36px rgba(180,200,230,.55);pointer-events:none;font-size:32px;font-weight:900;letter-spacing:1px;animation:pulse .7s ease-in-out infinite}
+#warn{position:fixed;top:calc(var(--sat) + 76px);left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:6px;padding:6px 14px;background:var(--red2);border:1px solid var(--red);pointer-events:none;animation:rpulse .5s ease-in-out infinite}
+#tubewarn{position:fixed;left:50%;top:calc(var(--sat) + 120px);transform:translateX(-50%);display:flex;align-items:center;gap:12px;padding:10px 22px;background:#000;border:1px solid var(--red);box-shadow:0 0 30px rgba(255,26,26,.5);pointer-events:none;font-size:26px;font-weight:700;letter-spacing:.2em;color:#fff;animation:rpulse .7s ease-in-out infinite}
 #tubewarn svg{width:46px;height:46px}
-#tubehint{position:fixed;left:50%;bottom:calc(var(--sab) + 112px);transform:translateX(-50%);display:flex;align-items:center;gap:12px;padding:10px 20px;border-radius:24px;background:rgba(30,18,64,.7);box-shadow:0 0 0 3px rgba(255,255,255,.7);pointer-events:none;font-size:24px;font-weight:800;white-space:nowrap}
+#tubehint{position:fixed;left:50%;top:calc(var(--sab) + 172px);transform:translateX(-50%);display:flex;align-items:center;gap:12px;padding:10px 20px;background:rgba(0,0,0,.86);border:1px solid var(--red);pointer-events:none;font-size:16px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;white-space:nowrap}
 #tubehint svg{width:54px;height:54px}
-#tubechip{position:absolute;top:calc(var(--sat) + 150px);left:calc(var(--sal) + 10px);display:flex;align-items:center;gap:6px;padding:4px 12px;border-radius:999px;background:rgba(40,44,56,.8);font-size:18px;font-weight:900;letter-spacing:1px;box-shadow:inset 0 0 0 2px rgba(255,255,255,.25)}
-#tubechip svg{width:24px;height:24px}
-@media (prefers-reduced-motion:reduce){#tubewarn{animation:none!important}}
-#warn svg{width:44px;height:44px}#warn b{font-size:34px;font-weight:900}
-#perf{position:fixed;left:calc(var(--sal) + 6px);bottom:calc(var(--sab) + 90px);margin:0;padding:6px 8px;font:11px/1.35 ui-monospace,Menlo,monospace;color:#9ff8ff;background:rgba(0,0,0,.6);border-radius:8px;pointer-events:none;white-space:pre;contain:layout paint;width:230px;height:104px;overflow:hidden;z-index:9}
-#mult{font-variant-numeric:tabular-nums}
-@media (prefers-reduced-motion:reduce){.tut,.tut svg,#warn{animation:none!important}}
+#tubechip{position:absolute;top:calc(var(--sat) + 150px);left:calc(var(--sal) + 10px);display:flex;align-items:center;gap:8px;padding:4px 12px;background:var(--red2);font-size:16px;font-weight:700;letter-spacing:.24em;color:#fff}
+#tubechip svg{width:24px;height:24px}#tubechip svg *{stroke:#fff!important}
+#warn svg{width:44px;height:44px}#warn b{font-size:34px;font-weight:700;color:#fff}
+@media (prefers-reduced-motion:reduce){#tubewarn,.tut,.tut svg,#warn{animation:none!important}}
+#perf{position:fixed;left:calc(var(--sal) + 6px);bottom:calc(var(--sab) + 90px);margin:0;padding:6px 8px;font:11px/1.35 ui-monospace,Menlo,monospace;color:#ff8a8a;background:rgba(0,0,0,.7);pointer-events:none;white-space:pre;contain:layout paint}
+@media (min-aspect-ratio:13/10){#title .bot{position:absolute;left:calc(var(--sal) + 16px);bottom:calc(var(--sab) + 16px);align-items:flex-start}}
+@media (orientation:landscape) and (max-height:520px){.big{width:104px;height:104px}.big svg{width:52px;height:52px}#title .bot{gap:10px}.logo .rf{max-width:38vw}.btn,.seg button{height:64px}.btn{width:64px}.seg button{width:72px}}
 </style>
 </head><body>
 <div id="game"></div>
 <div id="hud" class="hidden">
+  <div id="prog" aria-hidden="true"><i></i><b></b></div>
   <div id="danger"></div>
-  <div class="tl"><div class="chip" id="score">0</div><div class="chip" id="coinsChip"><span class="ic-coin"></span><span id="coins">0</span></div></div>
+  <div class="tl"><div class="chip" id="scoreChip"><span class="cap">Score</span><span id="score">0</span></div><div class="chip" id="coinsChip"><span class="cap">Coins</span><span class="cr"><span class="ic-coin"></span><span id="coins">0</span></span></div></div>
   <div class="tr"><button class="btn musictog" id="musicbtnHud" aria-label="Music on or off"></button><button class="btn" id="pausebtn" aria-label="Pause"><span class="ic-pause"></span></button></div>
   <div id="mult" class="hidden">x2</div>
   <div id="tubechip" class="hidden"><span class="ic-tube"></span><span>TUBE</span></div>
+  <div id="speed"><div class="row"><div id="spd" aria-label="Speed">0</div><span class="cap">km/h</span></div><div class="gear" id="gearH"><b>P</b><b>R</b><b>N</b><b class="on">D</b></div></div>
   <div id="pows"></div>
 </div>
 <div id="hint" class="hidden"><svg class="arrows" viewBox="0 0 240 240" fill="none" stroke="#fff" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"><path d="M40 120h-26m0 0l18-18m-18 18l18 18M200 120h26m0 0l-18-18m18 18l-18 18M120 40V14m0 0l-18 18m18-18l18 18M120 200v26m0 0l-18-18m18 18l18-18"/></svg><span class="hand ic-hand"></span></div>
@@ -86,13 +132,18 @@ button{font:inherit;color:#fff;border:0;cursor:pointer;touch-action:manipulation
 <div id="tubehint" class="hidden"><span class="ic-wallswap"></span><span>Swipe to switch walls</span></div>
 <div id="warn" class="hidden"><span class="ic-truck"></span><b>!</b></div>
 <pre id="perf" class="hidden"></pre>
+<div id="callouts" aria-hidden="true"></div>
 <div id="title" class="panel">
-  <div class="logo">ROADSTER<br>RUSH</div>
-  <button class="big" id="playbtn" aria-label="Play"><span class="ic-play"></span></button>
-  <div class="row"><div class="chip" id="bestChip"><span class="ic-trophy"></span><span id="best">0</span></div><button class="btn" id="mutebtn" aria-label="Sound on or off"><span class="ic-sound"></span></button><button class="btn musictog" id="musicbtn" aria-label="Music on or off"></button></div>
-  <div class="ver" id="ver" aria-hidden="true">v7</div>
+  <div class="top"><div class="logo" id="logo" role="img" aria-label="Roadster Rush"></div><div class="gear" id="gearT"><b>P</b><b>R</b><b class="on">N</b><b>D</b></div></div>
+  <div class="bot">
+    <button class="big" id="playbtn" aria-label="Play"><span class="ic-play"></span></button>
+    <div class="row"><div class="chip" id="bestChip"><span class="ic-trophy"></span><span id="best">0</span></div><button class="btn" id="mutebtn" aria-label="Sound on or off"><span class="ic-sound"></span></button><button class="btn musictog" id="musicbtn" aria-label="Music on or off"></button></div>
+    <div class="seg" id="paint" role="group" aria-label="Car colour"><button id="paintAno" aria-label="White car" aria-pressed="true" class="on"><i class="sw w"></i><span class="cap">White</span></button><button id="paintPilot" aria-label="Black car" aria-pressed="false"><i class="sw b"></i><span class="cap">Black</span></button></div>
+  </div>
+  <div class="ver" id="ver" aria-hidden="true">v8</div>
 </div>
 <div id="paused" class="panel hidden">
+  <span class="cap" id="pausedCap"></span>
   <button class="big" id="resumebtn" aria-label="Resume"><span class="ic-play"></span></button>
   <div class="row"><button class="btn" id="restartbtn" aria-label="Restart"><span class="ic-replay"></span></button><button class="btn" id="homebtn" aria-label="Home"><span class="ic-home"></span></button></div>
   <div class="row"><button class="btn" id="mutebtn2" aria-label="Sound on or off"><span class="ic-sound"></span></button><button class="btn musictog" id="musicbtnPause" aria-label="Music on or off"></button></div>
@@ -3952,7 +4003,7 @@ var RRLogic = (function () {
     LANE_RATE: 13,
     SPEED0: 15, SPEED_MAX: 33, SPEED_TAU: 160,
     BARRIER_H: 1.0, BARRIER_D: 0.5,
-    BAR_Y0: 1.0, BAR_Y1: 1.9, BAR_D: 0.5,
+    BAR_Y0: 1.0, BAR_Y1: 99, BAR_D: 0.5, /* v8: the duck-under gantry is a solid portal from 1.0 m up (BAR_Y1 99): a hop can NOT clear it, only the slide (or the rocket) passes */
     HAUL_TOP: 2.6, HAUL_HW: 1.15, RAMP_LEN: 8,
     VIEW: 230, MOVE_K: 0.45,
     MAGNET_T: 10, X2_T: 12, ROCKET_T: 6, SHIELD_T: 25, ROCKET_Y: 7.5,
@@ -3966,14 +4017,15 @@ var RRLogic = (function () {
     // descent + LAND_REACT s after touchdown; if none is clear the flight hovers (up to LAND_EXT_MAX s) until one is.
     LAND_LOOK: 1.8, LAND_DESC: 0.8, LAND_REACT: 0.6, LAND_EXT_MAX: 3, LAND_INV: 1.3, LAND_GHOST_INV: 2.2,
     // v7 Tube Run: at TUBE_SCORE the road ends in a tunnel. TUBE_SLOTS lanes around a circular tube of radius TUBE_R; swipe = one slot. No jump / no slide.
-    TUBE_SCORE: 10000, TUBE_R: 5, TUBE_SLOTS: 8, TUBE_EASE: 2, TUBE_FIRST: 55, TUBE_HIT: 0.52, TUBE_MAG: 2.6, TUBE_ENTRY_PAD: 18, TUBE_BAR_D: 0.5, TUBE_GATE_D: 0.6
+    TUBE_SCORE: 10000, /* v8 tunnel schedule: tunnel windows [10k,15k) [20k,25k) [30k,35k) ... i.e. floor(score/TUBE_PERIOD) is even and >= 2; from TUBE_TALL_S on the tunnel is taller (TUBE_R_TALL) and you can HOP the low floor obstacles */ TUBE_PERIOD: 5000, TUBE_TALL_S: 50000, TUBE_R_TALL: 7.5, TUBE_BAR_H: 1.35, TUBE_TRIM_S: 600, TUBE_TRIM_VIEW: 175, TUBE_TRIM_TUBE: 130, TUBE_EXIT_PAD: 26, TUBE_MEFF: 0.85, TUBE_R: 5, TUBE_SLOTS: 8, TUBE_EASE: 2, TUBE_FIRST: 55, TUBE_HIT: 0.52, TUBE_MAG: 2.6, TUBE_ENTRY_PAD: 18, TUBE_BAR_D: 0.5, TUBE_GATE_D: 0.6
   };
   function rng(seed) { var s = (seed >>> 0) || 1; return { s: s, next: function () { this.s = (this.s + 0x6D2B79F5) >>> 0; var t = this.s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; } }; }
   function laneX(l) { return l * C.LANE_W; }
   var TWO_PI = Math.PI * 2, SLOT_RAD = TWO_PI / C.TUBE_SLOTS;
   function cdist(a, b) { var n = C.TUBE_SLOTS, d = ((a - b) % n + n) % n; return d > n / 2 ? n - d : d; } // circular distance in slots
-  function tubeX(th, h) { return C.TUBE_R * Math.sin(th) - h * Math.sin(th); } // world x of a point h metres above the surface at angle th (0 = floor, +pi/2 = right wall)
-  function tubeY(th, h) { return C.TUBE_R - C.TUBE_R * Math.cos(th) + h * Math.cos(th); }
+  function tubeX(th, h, R) { return (R || C.TUBE_R) * Math.sin(th) - h * Math.sin(th); } // world x of a point h metres above the surface at angle th (0 = floor, +pi/2 = right wall)
+  function tubeY(th, h, R) { R = R || C.TUBE_R; return R - R * Math.cos(th) + h * Math.cos(th); }
+  function wantTube(k) { return k >= 2 && (k & 1) === 0; } // tunnel window index (floor(score / TUBE_PERIOD)): windows 2, 4, 6, ... are tunnels
 
   function Game(seed) { this.reset(seed == null ? 1 : seed); }
   var P = Game.prototype;
@@ -3994,6 +4046,7 @@ var RRLogic = (function () {
     this.coinFree = this.coinFree || []; this.obsFree = this.obsFree || []; this.coyote = 0; this.pz = 0; this.px = 0; this.py = 0; this.hitStop = 0;
     this.mode = 'road'; this.tubePending = false; this.tubeEntryZ = 0; this.tubeBlend = 0; this.tubeNextZ = 0; this.tubePowZ = 0; this.tubeRowN = 0; this.tSafe = 0; this.tubeT = 0; this.tBusy = [0, 0, 0, 0, 0, 0, 0, 0];
     this.ghostOn = false; this.ang = 0; this.pang = 0; this.tslot = 0; this.slotChanges = 0; this.landExt = 0; this.landGhost = false; this.ghostLandings = 0; this.rocketLandings = 0; this.tubeEnterScore = 0; this.tubeEntered = 0; this.tubePrevZ = 0;
+    this.exitPending = false; this.tubeExitZ = 1e12; this.tubeR = C.TUBE_R; this.tubeTall = false; this.tubeK = 0; this.roadK = 0; this.tubeExited = 0; this.tubeExitScore = 0; this.tHopPrev = false; this.hops = 0;
     this.generate();
   };
   P.ev = function (type, a, b) { // pooled event ring: no per-event allocation; consumer reads events[0..evN) then sets evN = 0
@@ -4008,14 +4061,17 @@ var RRLogic = (function () {
   function Obs() { this.id = 0; this.kind = ''; this.lane = 0; this.z = 0.5; this.len = 0.5; this.meet = 0.5; this.ramp = false; this.moving = false; this.passed = false; this.dead = false; }
   P.addObs = function (src) { var o = (this.obsFree && this.obsFree.pop()) || new Obs(); o.id = this.uid++; o.kind = src.kind; o.lane = src.lane; o.z = src.z; o.len = src.len || 0; o.meet = src.meet != null ? src.meet : src.z; o.ramp = !!src.ramp; o.moving = !!src.moving; o.passed = false; o.dead = false; this.obs.push(o); return o; };
   P.addCoin = function (z, lane, y) { var c = this.coinFree.pop() || {}; c.id = this.uid++; c.z = z; c.x = laneX(lane); c.y = y; c.taken = false; c.fly = 0; c.fx = 0; c.fy = 0; c.fz = 0; c.slot = -1; this.coinsArr.push(c); };
-  P.addTubeCoin = function (z, slot, h) { var c = this.coinFree.pop() || {}, th = slot * SLOT_RAD; c.id = this.uid++; c.z = z; c.x = tubeX(th, h); c.y = tubeY(th, h); c.taken = false; c.fly = 0; c.fx = 0; c.fy = 0; c.fz = 0; c.slot = slot; this.coinsArr.push(c); };
+  P.addTubeCoin = function (z, slot, h) { var c = this.coinFree.pop() || {}, th = slot * SLOT_RAD; c.id = this.uid++; c.z = z; c.x = tubeX(th, h, this.tubeR); c.y = tubeY(th, h, this.tubeR); c.taken = false; c.fly = 0; c.fx = 0; c.fy = 0; c.fz = 0; c.slot = slot; this.coinsArr.push(c); };
   P.generate = function () {
-    if (this.tubePending || this.mode === 'tube') { // v7: after the tunnel is announced, only tunnel rows are generated (road rows already placed end before the entry)
-      while (this.tubeNextZ < this.z + C.VIEW) this.tubeRow();
+    // v8: in the last stretch before a tunnel transition the current kind of track is only generated TUBE_TRIM_VIEW m ahead, so the next transition is never more than a few seconds away once announced
+    var hor = C.VIEW, pend = this.tubePending || this.exitPending;
+    if (!pend) { var s = this.score, B = s < C.TUBE_SCORE ? C.TUBE_SCORE : (Math.floor(s / C.TUBE_PERIOD) + 1) * C.TUBE_PERIOD; if (B - s <= C.TUBE_TRIM_S) hor = this.mode === 'tube' ? C.TUBE_TRIM_TUBE : C.TUBE_TRIM_VIEW; }
+    if ((this.mode === 'road' && this.tubePending) || (this.mode === 'tube' && !this.exitPending)) { // v7: after the tunnel is announced, only tunnel rows are generated (road rows already placed end before the entry); v8: the same in reverse after the exit is announced
+      while (this.tubeNextZ < this.z + hor) this.tubeRow();
       return;
     }
-    while (this.nextRowZ < this.z + C.VIEW) this.placeRow();
-    while (this.nextPowZ < this.z + C.VIEW) this.placePow();
+    while (this.nextRowZ < this.z + hor) this.placeRow();
+    while (this.nextPowZ < this.z + hor) this.placePow();
   };
   P.freeAt = function (l, z) { return this.blocked[l + 1] < z; };
   P.placePow = function () {
@@ -4126,6 +4182,8 @@ var RRLogic = (function () {
     if (this.state !== 'play') return;
     if (this.mode === 'tube') { // v7 Tube Run: swipe = one slot around the tube (any direction, wraps); jump and slide do not exist here
       if (a === 'left' || a === 'right') { this.tslot += a === 'left' ? -1 : 1; this.slotChanges++; this.laneChanges++; this.ev('lane', a); }
+      else if (this.tubeTall && a === 'up') { if (!this.air) this.doJump(); else this.jumpBuf = 0.18; this.hops++; } // v8 hybrid tunnel: hop (towards the axis); duck-unders still cannot be jumped
+      else if (this.tubeTall && a === 'down' && this.air) { this.vy = Math.min(this.vy, C.DIVE_V); this.ev('dive'); }
       return;
     }
     if (a === 'left' || a === 'right') {
@@ -4192,6 +4250,13 @@ var RRLogic = (function () {
     if (this.mode === 'road') {
       if (!this.tubePending) { if ((this.tick & 7) === 0) this.checkTube(); }
       else if (this.z >= this.tubeEntryZ && this.rocketT === 0) this.enterTube();
+      if (this.tubeBlend > 0) this.tubeBlend = Math.max(0, this.tubeBlend - dt / C.TUBE_EASE); // v8: the grey tunnel look eases back out after the exit
+    } else if (this.mode === 'tube') {
+      if (!this.exitPending) { if ((this.tick & 7) === 0) this.checkExit(); }
+      else {
+        if (this.z >= this.tubeExitZ - C.TUBE_EXIT_PAD + 6 && this.tslot % C.TUBE_SLOTS !== 0) this.tslot = Math.round(this.tslot / C.TUBE_SLOTS) * C.TUBE_SLOTS; // past the last obstacle: roll back to the floor before the road starts
+        if (this.z >= this.tubeExitZ) this.exitTube();
+      }
     }
     // lateral
     var tx = this.mode === 'tube' ? 0 : laneX(this.lane), xPrev = this.x;
@@ -4200,7 +4265,10 @@ var RRLogic = (function () {
     if (this.mode === 'tube') {
       this.tubeT += dt; this.tubeBlend = Math.min(1, this.tubeBlend + dt / C.TUBE_EASE);
       this.ang += (this.tslot - this.ang) * Math.min(1, dt * C.LANE_RATE); if (Math.abs(this.tslot - this.ang) < 0.01) this.ang = this.tslot;
-      this.y += (0 - this.y) * Math.min(1, dt * 12); if (this.y < 0.01) this.y = 0; this.vy = 0; this.air = false; this.slideT = 0; this.ground = 0;
+      if (this.tubeTall) { // v8 hybrid tunnel: normal hop physics along the radial direction
+        if (this.air || this.y > 0) { this.vy -= C.G * dt; this.y += this.vy * dt; this.air = true; if (this.y <= 0) { this.y = 0; if (this.vy < -4) { this.ev('land', -this.vy); this.landT = 0.18; } this.vy = 0; this.air = false; if (this.jumpBuf > 0) { this.jumpBuf = 0; this.doJump(); } } }
+        this.slideT = 0; this.ground = 0;
+      } else { this.y += (0 - this.y) * Math.min(1, dt * 12); if (this.y < 0.01) this.y = 0; this.vy = 0; this.air = false; this.slideT = 0; this.ground = 0; }
     } else if (this.rocketT > 0) { // rocket flight
       this.rocketT = Math.max(0, this.rocketT - dt);
       this.y += (C.ROCKET_Y - this.y) * Math.min(1, dt * 2.5); this.vy = 0; this.air = true; this.slideT = 0;
@@ -4273,25 +4341,49 @@ var RRLogic = (function () {
     }
   };
   // ---------- v7 Tube Run ----------
-  P.checkTube = function () { // (predicts with the base rate 0.5 per metre, never the x2 or combo multiplier, so the score at the mouth is always >= TUBE_SCORE) announce the tunnel when the score at the tunnel mouth will be >= TUBE_SCORE. The mouth is placed after every road obstacle already generated, so nothing pops.
-    if (this.rocketT > 0 || this.state !== 'play') return;
+  // v8 schedule: tunnel windows are [10k,15k) [20k,25k) [30k,35k) ... (wantTube(floor(score / 5000))). Every 5,000 points from 10,000 the track flips (road -> tunnel -> road ...), always through a pending state: the mouth is placed after every item already generated (nothing pops), the eased warning cue plays, the tunnel look eases in/out over TUBE_EASE s. The prediction uses a half-weight multiplier so the flip happens within ~3 s of the threshold even with x2 + combo; roadK / tubeK (window indexes) make the sequence strictly alternating and a score that skips a whole window flips at the next opportunity.
+  P.predK = function (e) { var m = 1 + (this.mult() - 1) * C.TUBE_MEFF; return Math.floor((this.score + (e - this.z) * 0.5 * m) / C.TUBE_PERIOD); };
+  P.checkTube = function () {
+    if (this.state !== 'play') return;
     var e = this.z + 90, i;
     for (i = 0; i < this.coinsArr.length; i++) if (this.coinsArr[i].slot < 0 && this.coinsArr[i].z > e) e = this.coinsArr[i].z;
     for (i = 0; i < this.obs.length; i++) { var o = this.obs[i]; if (o.dead || o.kind.charCodeAt(0) === 116) continue; var end = (o.moving ? o.meet : o.z) + (o.len || 0.5) + (o.moving ? C.VIEW * C.MOVE_K : 0); if (end > e) e = end; }
     e += C.TUBE_ENTRY_PAD;
-    if (this.score + (e - this.z) * 0.5 < C.TUBE_SCORE) return;
-    this.tubePending = true; this.tubeEntryZ = e; this.tubeNextZ = e + C.TUBE_FIRST; this.tubePowZ = e + 200 + this.r.next() * 80; this.tubeRowN = 0; this.tSafe = 0;
+    var kp = this.predK(e); if (kp <= this.roadK || !wantTube(kp)) return;
+    if (this.rocketT > C.LAND_LOOK) { this.rocketT = C.LAND_LOOK; return; } // bounded wait: the rocket fuel is cut at the threshold, the usual cleared-lane landing follows (<= ~2 s + hover), then the tunnel is announced
+    if (this.rocketT > 0) return;
+    this.tubePending = true; this.tubeEntryZ = e; this.tubeNextZ = e + C.TUBE_FIRST; this.tubePowZ = e + 200 + this.r.next() * 80; this.tubeRowN = 0; this.tSafe = 0; this.tubeK = kp;
+    this.tubeTall = kp * C.TUBE_PERIOD >= C.TUBE_TALL_S; this.tubeR = this.tubeTall ? C.TUBE_R_TALL : C.TUBE_R; this.tHopPrev = false; this.tOpen = null;
     for (i = 0; i < this.pows.length; i++) if (this.pows[i].kind === 'rocket' && !this.pows[i].taken) this.pows[i].kind = 'x2'; // no rocket in the tunnel
     this.ev('tubewarn');
   };
   P.enterTube = function () {
-    this.mode = 'tube'; this.tubeBlend = 0; this.tubeT = 0; this.ang = 0; this.pang = 0; this.tslot = 0; this.lane = 0; this.prevLane = 0;
+    this.mode = 'tube'; this.tubeBlend = 0; this.tubeT = 0; this.ang = 0; this.pang = 0; this.tslot = 0; this.lane = 0; this.prevLane = 0; this.tubePending = false; this.exitPending = false; this.tubeExitZ = 1e12;
     this.vy = 0; this.air = false; this.slideT = 0; this.jumpBuf = 0; this.coyote = 0; this.slideQueued = false; this.tubeEntered++; this.tubeEnterScore = this.score; this.ev('tube');
   };
-  P.forceTube = function (slot) { // test / debug only: drop into the tunnel right here (road items ahead are cleared; never used by real play)
+  P.checkExit = function () { // inside the tunnel: when the score at the end of everything already generated is past the window, announce the exit (the tunnel ends after the last row, then the road resumes)
+    if (this.state !== 'play') return;
+    if (this.score + 400 * 0.5 * this.mult() < (this.tubeK + 1) * C.TUBE_PERIOD) return; // cheap early-out (400 m is more than any exit mouth is ever away)
+    var e = this.z + 70, i;
+    for (i = 0; i < this.coinsArr.length; i++) if (this.coinsArr[i].slot >= 0 && this.coinsArr[i].z > e) e = this.coinsArr[i].z;
+    for (i = 0; i < this.pows.length; i++) if (this.pows[i].slot >= 0 && !this.pows[i].taken && this.pows[i].z + 3 > e) e = this.pows[i].z + 3;
+    for (i = 0; i < this.obs.length; i++) { var o = this.obs[i]; if (o.dead || o.kind.charCodeAt(0) !== 116) continue; var end = o.z + (o.len || 0.5); if (end > e) e = end; }
+    e += C.TUBE_EXIT_PAD;
+    var kp = this.predK(e); if (kp <= this.tubeK) return;
+    if (wantTube(kp)) { this.tubeK = kp; return; } // the score skipped a whole road window: stay in (the next window is a tunnel too)
+    this.exitPending = true; this.tubeExitZ = e; this.roadK = kp; this.nextRowZ = e + 45; this.nextPowZ = e + 150 + this.r.next() * 80; this.rowN = 0;
+    this.blocked = [0, 0, 0]; this.solidUntil = [0, 0, 0]; this.bodyUntil = [0, 0, 0];
+    this.ev('tubeexitwarn');
+  };
+  P.exitTube = function () {
+    this.mode = 'road'; this.exitPending = false; this.tslot = this.ang = this.pang = 0; this.lane = 0; this.prevLane = 0; this.x = 0; this.y = 0; this.vy = 0; this.air = false; this.slideT = 0; this.jumpBuf = 0; this.coyote = 0; this.slideQueued = false;
+    this.tubeTall = false; this.tubeExited++; this.tubeExitScore = this.score; this.ev('tubeout');
+  };
+  P.forceTube = function (slot, tall) { // test / debug only: drop into the tunnel right here (road items ahead are cleared; never used by real play)
     var i; for (i = 0; i < this.obs.length; i++) this.obs[i].dead = true;
     for (i = 0; i < this.coinsArr.length; i++) this.coinFree.push(this.coinsArr[i]); this.coinsArr.length = 0; this.pows.length = 0;
     slot = slot || 0; this.tubePending = true; this.tubeEntryZ = this.z - 1; this.tubeNextZ = this.z + C.TUBE_FIRST; this.tubePowZ = this.z + 140; this.tubeRowN = 0; this.tSafe = ((slot % C.TUBE_SLOTS) + C.TUBE_SLOTS) % C.TUBE_SLOTS;
+    this.tubeTall = !!tall; this.tubeR = tall ? C.TUBE_R_TALL : C.TUBE_R; this.tubeK = Math.max(2, Math.floor(this.score / C.TUBE_PERIOD)); this.tHopPrev = false; this.tOpen = null;
     this.enterTube(); this.tslot = this.ang = this.pang = slot; this.tubeBlend = 1; this.generate();
   };
   P.tubeRow = function () {
@@ -4321,7 +4413,12 @@ var RRLogic = (function () {
       for (a = 0; a < 3 && !fixed; a++) for (b = 0; b < plan.length; b++) if (plan[b].lane === order[a] && plan[b].kind !== 'tbus') { blk[order[a]] = false; plan.splice(b, 1); fixed = true; break; }
       if (!fixed) for (a = 0; a < 3 && !fixed; a++) for (b = 0; b < plan.length; b++) if (plan[b].lane === order[a]) { blk[order[a]] = false; plan.splice(b, 1); fixed = true; break; }
     }
+    // 2c) v8 hybrid (tall tunnel): sometimes the safe slot itself carries a low barrier you must HOP (never two hop rows in a row, never in a row where the safe path also moves, never on the first rows); the slot counts as open for the exit guarantee. A coin arc over it shows where to jump.
+    var hopRow = false;
+    if (this.tubeTall && n >= 2 && !this.tHopPrev && s1 === s0 && !blk[s1] && r.next() < 0.4) { hopRow = true; plan.push({ kind: 'tbarrier', lane: s1, z: z, len: C.TUBE_BAR_D }); }
+    this.tHopPrev = hopRow;
     for (b = 0; b < plan.length; b++) { if (plan[b].kind === 'tbus') this.tBusy[plan[b].lane] = z + plan[b].len; this.addObs(plan[b]); }
+    if (hopRow) for (a = -2; a <= 2; a++) this.addTubeCoin(z + 0.25 + a * 1.5, s1, 0.7 + 1.9 * (1 - a * a / 4));
     var op = this.tOpen || (this.tOpen = [false, false, false, false, false, false, false, false]); for (j = 0; j < N; j++) op[j] = !blk[j];
     // 3) coins follow the safe path between the previous row and this one (never over a bus), and an occasional power-up on the safe slot just after the row
     if (n > 0 && r.next() < 0.85) {
@@ -4329,7 +4426,7 @@ var RRLogic = (function () {
       for (var cz = zp + 4; cz < z - 4; cz += 2.6) { var sl = cz < mid ? s0 : s1; if (this.tBusy[sl] > cz - 1) continue; this.addTubeCoin(cz, sl, 0.7); }
     }
     if (z >= this.tubePowZ) {
-      var kinds = ['magnet', 'x2', 'shield'], th = s1 * SLOT_RAD; this.pows.push({ id: this.uid++, z: z + 3, x: tubeX(th, 1.1), y: tubeY(th, 1.1), kind: kinds[Math.floor(r.next() * 3)], taken: false, slot: s1 });
+      var kinds = ['magnet', 'x2', 'shield'], th = s1 * SLOT_RAD; this.pows.push({ id: this.uid++, z: z + 3, x: tubeX(th, 1.1, this.tubeR), y: tubeY(th, 1.1, this.tubeR), kind: kinds[Math.floor(r.next() * 3)], taken: false, slot: s1 });
       this.tubePowZ = z + 260 + r.next() * 220;
     }
     this.tSafe = s1; this.tubePrevZ = z; this.tubeRowN = n + 1;
@@ -4341,7 +4438,7 @@ var RRLogic = (function () {
     for (var i = 0; i < this.obs.length; i++) {
       var o = this.obs[i]; if (o.dead || o.kind.charCodeAt(0) !== 116) continue;
       if (!(front > o.z && back < o.z + o.len)) { if (!o.passed && back > o.z + o.len) o.passed = true; continue; }
-      if (cdist(this.ang, o.lane) < C.TUBE_HIT) { if (this.crash(o, o.kind)) return; }
+      if (cdist(this.ang, o.lane) < C.TUBE_HIT) { if (this.tubeTall && o.kind === 'tbarrier' && this.y >= C.TUBE_BAR_H) continue; /* v8 hybrid: a hop clears the low barrier; gates and buses (and ducks) cannot be jumped */ if (this.crash(o, o.kind)) return; }
     }
   };
   // rocket landing (v7): pick a lane that is clear for the whole descent + reaction time. Pure look-ahead over the existing obstacles - nothing is removed.
@@ -4741,11 +4838,11 @@ var RRMusicToggle = function (store, audio, onChange) {
 var RRGov = (function () {
   // Tiers trade effects for cost, highest first. The governor first moves render scale (dynamic resolution), then tiers.
   var TIERS = [
-    { name: 'ultra', msaa: 4, bloom: 3, shadow: 2048, speedBlur: true, fxaa: false },
-    { name: 'high', msaa: 4, bloom: 3, shadow: 1024, speedBlur: true, fxaa: false },
-    { name: 'medium', msaa: 0, bloom: 2, shadow: 1024, speedBlur: true, fxaa: true },
-    { name: 'low', msaa: 0, bloom: 1, shadow: 512, speedBlur: false, fxaa: true },
-    { name: 'min', msaa: 0, bloom: 0, shadow: 256, speedBlur: false, fxaa: false } // shadows never toggle off: toggling recompiles every material (hitch)
+    { name: 'ultra', msaa: 4, bloom: 3, shadow: 2048, speedBlur: true, fxaa: false, wire: 2, cones: true },
+    { name: 'high', msaa: 4, bloom: 3, shadow: 1024, speedBlur: true, fxaa: false, wire: 2, cones: true },
+    { name: 'medium', msaa: 0, bloom: 2, shadow: 1024, speedBlur: true, fxaa: true, wire: 1, cones: true },
+    { name: 'low', msaa: 0, bloom: 1, shadow: 512, speedBlur: false, fxaa: true, wire: 0, cones: false },
+    { name: 'min', msaa: 0, bloom: 0, shadow: 256, speedBlur: false, fxaa: false, wire: 0, cones: false } // shadows never toggle off: toggling recompiles every material (hitch)
   ];
   function create(o) {
     o = o || {};
@@ -4803,7 +4900,9 @@ var RRFeedback = {
   combo: { sfx: 'combo', hap: 6, fx: 'popup+ring' },
   comboend: { sfx: 'comboend', hap: 0, fx: 'fade' },
   tubewarn: { sfx: 'power', hap: 20, fx: 'banner+fog' }, // v7: warning cue before the Tube Run
-  tube: { sfx: 'whoosh', hap: 30, fx: 'tunnel+roll' }
+  tube: { sfx: 'whoosh', hap: 30, fx: 'tunnel+roll' },
+  tubeexitwarn: { sfx: 'power', hap: 20, fx: 'banner' }, // v8: the tunnel ends soon
+  tubeout: { sfx: 'whoosh', hap: 30, fx: 'tunnel+roll' }
 };
 /*GOV-END*/
 
@@ -4873,7 +4972,51 @@ var RRPost = (function () {
   return Post;
 })();
 
-/* Roadster Rush v3 — procedural model of the 2026 roadster shown on the maker's public product page (original geometry; no
+/* Roadster Rush v8: original squared stroke font (digits + capitals) drawn as inline SVG paths. No font files, no external loads.
+   Grid is 3 wide x 5 tall; the 'outlined' look is a red stroke with a thinner black stroke on top (hollow boxy digits). */
+var RRFont = (function () {
+  var G = {
+    '0': 'M0 0L3 0L3 5L0 5Z', '1': 'M0.5 1L1.5 0L1.5 5M0 5L3 5', '2': 'M0 0L3 0L3 2.5L0 2.5L0 5L3 5', '3': 'M0 0L3 0L3 5L0 5M0 2.5L3 2.5', '4': 'M0 0L0 2.5L3 2.5M3 0L3 5',
+    '5': 'M3 0L0 0L0 2.5L3 2.5L3 5L0 5', '6': 'M3 0L0 0L0 5L3 5L3 2.5L0 2.5', '7': 'M0 0L3 0L3 5', '8': 'M0 0L3 0L3 5L0 5ZM0 2.5L3 2.5', '9': 'M3 2.5L0 2.5L0 0L3 0L3 5L0 5',
+    A: 'M0 5L0 0L3 0L3 5M0 2.5L3 2.5', B: 'M0 0L0 5L3 5L3 0ZM0 2.5L3 2.5', C: 'M3 0L0 0L0 5L3 5', D: 'M0 0L2 0L3 1L3 4L2 5L0 5Z', E: 'M3 0L0 0L0 5L3 5M0 2.5L2.5 2.5', F: 'M3 0L0 0L0 5M0 2.5L2.5 2.5',
+    G: 'M3 0L0 0L0 5L3 5L3 2.5L1.5 2.5', H: 'M0 0L0 5M3 0L3 5M0 2.5L3 2.5', I: 'M0.5 0L2.5 0M1.5 0L1.5 5M0.5 5L2.5 5', J: 'M3 0L3 5L0 5L0 3.5', K: 'M0 0L0 5M3 0L0 2.5L3 5', L: 'M0 0L0 5L3 5',
+    M: 'M0 5L0 0L1.5 2L3 0L3 5', N: 'M0 5L0 0L3 5L3 0', O: 'M0 0L3 0L3 5L0 5Z', P: 'M0 5L0 0L3 0L3 2.5L0 2.5', Q: 'M0 0L3 0L3 5L0 5ZM2 4L3 5.4', R: 'M0 5L0 0L3 0L3 2.5L0 2.5M1.5 2.5L3 5',
+    S: 'M3 0L0 0L0 2.5L3 2.5L3 5L0 5', T: 'M0 0L3 0M1.5 0L1.5 5', U: 'M0 0L0 5L3 5L3 0', V: 'M0 0L1.5 5L3 0', W: 'M0 0L0 5L1.5 3L3 5L3 0', X: 'M0 0L3 5M3 0L0 5', Y: 'M0 0L1.5 2.5L3 0M1.5 2.5L1.5 5', Z: 'M0 0L3 0L0 5L3 5',
+    '-': 'M0 2.5L3 2.5', '+': 'M0 2.5L3 2.5M1.5 1L1.5 4', '.': 'M1.5 4.6L1.5 5', '/': 'M3 0L0 5', ' ': ''
+  };
+  var NS = 'http' + ':' + '//www.w3.org/2000/svg';
+  function shift(d, dx) { return d.replace(/(-?[\d.]+) (-?[\d.]+)/g, function (m, x, y) { return (parseFloat(x) + dx) + ' ' + y; }); }
+  /* static text as one inline svg string (labels, wordmark): single stroke */
+  function text(s, o) {
+    o = o || {}; var h = o.h || 20, sw = o.sw || 0.55, col = o.color || 'currentColor', d = '', n = 0, adv = o.adv || 4.4;
+    s = String(s).toUpperCase(); for (var i = 0; i < s.length; i++) { var g = G[s[i]]; if (g) d += shift(g, i * adv); n++; }
+    var w = Math.max(1, n * adv - (adv - 3));
+    return '<svg class="rf" viewBox="' + (-sw) + ' ' + (-sw) + ' ' + (w + 2 * sw) + ' ' + (5 + 2 * sw) + '" height="' + h + '" width="' + (h * (w + 2 * sw) / (5 + 2 * sw)).toFixed(1) + '" fill="none" stroke="' + col + '" stroke-width="' + sw + '" stroke-linejoin="miter" stroke-linecap="butt" aria-hidden="true"><path d="' + d + '"/></svg>';
+  }
+  /* numeric readout: fixed slots of hollow (outlined) digits; only the slots that change touch the DOM */
+  function mount(el, n, h) {
+    var v0 = el.textContent.trim() || '0'; el.textContent = ''; var sr = document.createElement('span'); sr.className = 'sr'; sr.textContent = v0; el.appendChild(sr);
+    var dg = document.createElement('span'); dg.className = 'dg'; dg.setAttribute('aria-hidden', 'true'); el.insertBefore(dg, el.firstChild);
+    el._h = h || 26; el._dg = dg; el._sr = sr; el._slots = []; el._c = null; grow(el, n || 4); num(el, sr.textContent);
+  }
+  function grow(el, n) {
+    while (el._slots.length < n) {
+      var s = document.createElementNS(NS, 'svg'), h = el._h; s.setAttribute('viewBox', '-0.7 -0.7 4.4 6.4'); s.setAttribute('height', h); s.setAttribute('width', (h * 4.4 / 6.4).toFixed(1)); s.setAttribute('class', 'dgt'); s.setAttribute('fill', 'none');
+      var a = document.createElementNS(NS, 'path'), b = document.createElementNS(NS, 'path'); a.setAttribute('class', 'o'); b.setAttribute('class', 'i'); s.appendChild(a); s.appendChild(b); el._dg.insertBefore(s, el._dg.firstChild); el._slots.unshift({ a: a, b: b, c: '' });
+    }
+  }
+  function num(el, v) {
+    v = String(v); if (el._c === v) return; el._c = v; el._sr.textContent = v; if (v.length > el._slots.length) grow(el, v.length);
+    var S = el._slots, off = S.length - v.length;
+    for (var i = 0; i < S.length; i++) { var c = i >= off ? v[i - off] : ' ', sl = S[i]; if (sl.c !== c) { sl.c = c; var d = G[c] || ''; sl.a.setAttribute('d', d); sl.b.setAttribute('d', d); } }
+  }
+  return { G: G, text: text, mount: mount, num: num };
+})();
+if (typeof module !== 'undefined') module.exports = RRFont;
+
+/* Roadster Rush v8: two paints. 'pilot' (default) = glossy near-black body with a white fresnel edge glow, a thin animated wireframe overlay, dark glass,
+   gold cold-gas nozzles, full-width LED bars; 'ano' = the v3-v7 satin white. All geometry and materials are original.
+   Roadster Rush v3 — procedural model of the 2026 roadster shown on the maker's public product page (original geometry; no
    extracted 3D assets, no logos, wordmarks or plate text). Proportions were measured off the official reference photos
    (see REQUIREMENTS.md "Roadster reference"); anything not visible in those photos is a flagged guess.
    Draw-call budget: static parts are merged per material; each axle's two wheels share one spinning mesh. */
@@ -4922,13 +5065,13 @@ var RRCar = (function () {
 
   // ---- dimensions (metres; L = length axis, +L = nose; car faces -z) — measured from the side and rear reference photos ----
   var L0 = -2.15, L1 = 2.25;                       // overall length 4.40 m (side photo, scaled from an ASSUMED 2.85 m wheelbase)
-  var WHEELS = [[-1.43, 0.85], [1.42, 0.85]], WR = 0.35, ARCH = 0.42; // wheelbase 2.85 (assumed), track 1.70 (guess), wheel dia 0.70 (photo)
-  var FEN = curve([[2.25, 0.545], [2.18, 0.58], [2.09, 0.621], [2.0, 0.666], [1.91, 0.707], [1.82, 0.746], [1.73, 0.78], [1.64, 0.805], [1.55, 0.821], [1.46, 0.832], [1.36, 0.836], [1.1, 0.835]]); // front fender crown (side photo, 40-px columns)
+  var WHEELS = [[-1.83, 0.85], [0.97, 0.85]], WR = 0.35, ARCH = 0.45; // wheelbase 2.80 (side frame f_013 of the video), track 1.70 (guess), wheel dia 0.70 (photo)
+  var FEN = curve([[2.25, 0.550], [2.18, 0.580], [2.09, 0.615], [2, 0.650], [1.91, 0.685], [1.82, 0.716], [1.73, 0.730], [1.64, 0.755], [1.55, 0.771], [1.46, 0.782], [1.36, 0.793], [1.1, 0.835]]); // front fender crown (side photo, 40-px columns)
   var BELT = curve([[1.36, 0.83], [0.2, 0.815], [-0.92, 0.83]]);                                    // beltline under the side glass (side photo)
-  var HAU = curve([[-0.92, 0.84], [-1.06, 0.97], [-1.15, 0.95], [-1.24, 0.937], [-1.42, 0.919], [-1.6, 0.909], [-1.78, 0.892], [-1.96, 0.883], [-2.05, 0.872], [-2.15, 0.86]]); // rear haunch ridges (side photo)
-  var DECK = curve([[-0.92, 0.83], [-1.4, 0.85], [-1.8, 0.86], [-2.15, 0.85]]);                       // centre deck between the ridges (rear photos; height GUESS)
+  var HAU = curve([[-0.92, 0.840], [-1.06, 0.951], [-1.15, 0.930], [-1.24, 0.930], [-1.42, 0.970], [-1.6, 0.970], [-1.78, 0.960], [-1.96, 0.940], [-2.05, 0.930], [-2.15, 0.910]]); // rear haunch ridges (side photo)
+  var DECK = curve([[-0.92, 0.83], [-1.4, 0.93], [-1.8, 0.96], [-2.15, 0.94]]);                       // centre deck between the ridges (rear photos; height GUESS)
   var BOT = curve([[-2.15, 0.33], [-1.9, 0.2], [-1.5, 0.15], [1.6, 0.15], [2.0, 0.22], [2.25, 0.36]]);
-  var WID = curve([[-2.15, 0.95], [-1.85, 0.99], [-1.4, 1.0], [-0.9, 0.965], [0, 0.94], [0.9, 0.955], [1.42, 0.985], [1.8, 0.94], [2.05, 0.84], [2.25, 0.64]]); // half-width (plan view: GUESS, no top photo)
+  var WID = curve([[-2.15, 0.95], [-1.85, 0.99], [-1.4, 1.0], [-0.9, 0.965], [0, 0.94], [0.9, 0.955], [1.42, 0.985], [1.8, 0.96], [2.05, 0.9], [2.25, 0.78]]); // half-width (plan view: GUESS, no top photo)
   function lin(a, b, x) { return Math.max(0, Math.min(1, (x - a) / (b - a))); }
   function topAt(L, ax) {
     var wf = sm(1.0, 1.25, L), wr = 1 - sm(-1.06, -0.9, L);
@@ -4939,7 +5082,7 @@ var RRCar = (function () {
   function archY(L) { var y = -1; for (var i = 0; i < 2; i++) { var d = L - WHEELS[i][0]; if (Math.abs(d) < ARCH) y = Math.max(y, WR + Math.sqrt(ARCH * ARCH - d * d) - 0.02); } return y; }
   function bodyFn(u, v, o) {
     var L = L0 + (L1 - L0) * u, th = -Math.PI / 2 + v * Math.PI * 2, s = Math.sin(th), c = Math.cos(th);
-    var yn = spow(s, 0.42), xn = spow(c, 0.2), ax = Math.abs(xn);
+    var yn = spow(s, 0.36), xn = spow(c, 0.15), ax = Math.abs(xn);
     var top = topAt(L, ax), bot = BOT(L), y = bot + (top - bot) * (yn + 1) / 2;
     var x = WID(L) * xn * (1 - 0.1 * Math.pow(Math.max(0, yn - 0.35) / 0.65, 1.3)) * (1 - 0.07 * Math.max(0, -yn)); // tumblehome above the crease, tuck-under below
     var ay = archY(L); if (ay > 0) { var wgt = sm(0.62, 0.86, ax) * (yn < 0.55 ? 1 : 0); y = y + (Math.max(y, Math.min(ay, top - 0.05)) - y) * wgt; }
@@ -4947,7 +5090,7 @@ var RRCar = (function () {
   }
   // cabin: one long gold-glazed canopy from the windshield base to the rear window base (side photo), narrowing between the haunches
   var GL0 = -1.8, GL1 = 1.36;
-  var ROOF = curve([[GL1, 0.835], [1.28, 0.867], [1.19, 0.898], [1.1, 0.928], [1.01, 0.96], [0.92, 0.989], [0.83, 1.019], [0.74, 1.046], [0.65, 1.073], [0.56, 1.098], [0.47, 1.123], [0.38, 1.146], [0.29, 1.164], [0.2, 1.173], [0.05, 1.178], [-0.16, 1.174], [-0.34, 1.166], [-0.52, 1.151], [-0.7, 1.131], [-0.79, 1.118], [-0.88, 1.08], [-0.97, 1.055], [-1.12, 0.95], [-1.45, 0.905], [GL0, 0.87]]); // roof line (side photo); rear glass below the ridges (GUESS)
+  var ROOF = curve([[GL1, 0.835], [1.28, 0.747], [1.19, 0.778], [1.1, 0.808], [1.01, 0.840], [0.92, 0.869], [0.83, 0.919], [0.74, 0.971], [0.65, 1.024], [0.56, 0.987], [0.47, 1.066], [0.38, 1.108], [0.29, 1.145], [0.2, 1.173], [0.05, 1.193], [-0.16, 1.210], [-0.34, 1.241], [-0.52, 1.241], [-0.7, 1.201], [-0.79, 1.148], [-0.88, 1.097], [-0.97, 1.023], [-1.12, 0.887], [-1.45, 0.867], [GL0, 0.99]]); // roof line (side photo); rear glass below the ridges (GUESS)
   var CW = curve([[GL1, 0.74], [1.05, 0.85], [0.3, 0.845], [-0.6, 0.79], [-0.95, 0.56], [-1.2, 0.44], [GL0, 0.4]]); // cabin half-width at its base (rear photo trapezoid; GUESS in plan)
   function cabBase(L) { return topAt(L, Math.min(0.9, CW(L) / WID(L))) - 0.012; }
   function glassFn(u, v, o) {
@@ -4967,33 +5110,80 @@ var RRCar = (function () {
     return new T.MeshPhysicalMaterial({ color: 0xeceef0, roughness: 0.42, metalness: 0.0, normalMap: microTex(), normalScale: new T.Vector2(0.04, 0.04),
       clearcoat: 0.35, clearcoatRoughness: 0.3, sheen: 0.15, sheenRoughness: 0.6, sheenColor: new T.Color(0xf4f6fa), envMapIntensity: 1.0 });
   }
+  // v8: edge glow. A fresnel term is added to the emissive output (HDR, so the post bloom picks the silhouette up). Uniforms are shared by every body material.
+  var RIM = { rimK: { value: 1.6 }, rimPow: { value: 12 }, rimCol: { value: new T.Color(1, 1, 1) } };
+  function rimify(m) {
+    m.onBeforeCompile = function (sh) {
+      sh.uniforms.rimK = RIM.rimK; sh.uniforms.rimPow = RIM.rimPow; sh.uniforms.rimCol = RIM.rimCol;
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform float rimK;uniform float rimPow;uniform vec3 rimCol;')
+        .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n totalEmissiveRadiance += rimCol * rimK * pow(1.0 - clamp(abs(dot(normalize(normal), normalize(vViewPosition))), 0.0, 1.0), rimPow);');
+    };
+    m.customProgramCacheKey = function () { return 'rimglow'; }; return m;
+  }
+  // v8: thin wireframe following the body panels (every 3rd loft ring / rail, nudged out along the normal). One LineSegments draw, animated scan band.
+  function wireGeo(bg, nu, nv, su, sv) {
+    var p = bg.attributes.position, n = bg.attributes.normal, W = nv + 1, out = [], i, j, k, k2, e = 0.007;
+    function seg(a, b) { out.push(p.getX(a) + n.getX(a) * e, p.getY(a) + n.getY(a) * e, p.getZ(a) + n.getZ(a) * e, p.getX(b) + n.getX(b) * e, p.getY(b) + n.getY(b) * e, p.getZ(b) + n.getZ(b) * e); }
+    for (i = 1; i < nu; i += su) for (j = 0; j < nv; j++) { k = i * W + j; seg(k, k + 1); }
+    for (j = 0; j < nv; j += sv) for (i = 1; i < nu - 1; i++) { k = i * W + j; k2 = (i + 1) * W + j; seg(k, k2); }
+    var g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(out, 3)); return g;
+  }
+  var WIRE = { t: { value: 0 }, k: { value: 1 }, scan: { value: 1 } };
+  function wireMat() {
+    return new T.ShaderMaterial({ transparent: true, depthWrite: false, blending: T.AdditiveBlending, uniforms: WIRE,
+      vertexShader: 'varying float vz;varying float vy;void main(){vz=position.z;vy=position.y;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
+      fragmentShader: 'uniform float t;uniform float k;uniform float scan;varying float vz;varying float vy;void main(){float s=fract(t*0.16)*7.0-2.6;float band=exp(-pow((vz-s)*0.9,2.0));float a=k*(0.2+scan*(0.9*band+0.08*sin(vz*5.0+vy*7.0+t*1.5)));gl_FragColor=vec4(vec3(0.78,0.84,0.95)*a,a);}' });
+  }
+  var PAINTS = {
+    pilot: { color: 0x07080a, roughness: 0.3, metalness: 0.35, clearcoat: 1, cr: 0.06, sheen: 0.02, sheenColor: 0x1c1e24, ns: 0.0, envI: 1.0, rim: 1.6, glass: { color: 0x020203, metalness: 0.0, roughness: 0.05, opacity: 0.74, envI: 1.5 }, ti: { color: 0xd9a24f, metalness: 1, roughness: 0.26, emissive: 0x5a3408, emissiveIntensity: 1 }, rimM: 0x17181c, dishM: 0x0d0e11, rubber: 0x0b0b0d },
+    ano:   { color: 0xeceef0, roughness: 0.42, metalness: 0.0, clearcoat: 0.35, cr: 0.3, sheen: 0.15, sheenColor: 0xf4f6fa, ns: 0.04, envI: 1.0, rim: 0.0, glass: { color: 0x2a1c14, metalness: 0.9, roughness: 0.08, opacity: 0.94, envI: 0.8 }, ti: { color: 0xb9a78c, metalness: 1, roughness: 0.3, emissive: 0x000000, emissiveIntensity: 0 }, rimM: 0x2a2b30, dishM: 0x9a9da3, rubber: 0x141416 }
+  };
+  // switch the look in place (uniform/colour changes only: no shader recompile)
+  function setPaint(root, name) {
+    var d = PAINTS[name] || PAINTS.pilot, m = root.userData.mats;
+    [m.paint, m.facet].forEach(function (x) { x.color.set(d.color); x.roughness = d.roughness; x.metalness = d.metalness; x.clearcoat = d.clearcoat; x.clearcoatRoughness = d.cr; x.sheen = d.sheen; x.sheenColor.set(d.sheenColor); x.normalScale.set(d.ns, d.ns); x.envMapIntensity = d.envI; });
+    RIM.rimK.value = d.rim; var g = m.glass; g.color.set(d.glass.color); g.metalness = d.glass.metalness; g.roughness = d.glass.roughness; g.opacity = d.glass.opacity; g.envMapIntensity = d.glass.envI;
+    var t = m.ti; t.color.set(d.ti.color); t.metalness = d.ti.metalness; t.roughness = d.ti.roughness; t.emissive.set(d.ti.emissive); t.emissiveIntensity = d.ti.emissiveIntensity;
+    m.rimM.color.set(d.rimM); m.dishM.color.set(d.dishM); m.rubber.color.set(d.rubber); m.edge.visible = name === 'pilot'; m.edge.color.setScalar(name === 'pilot' ? 1.5 : 0.0);
+    root.userData.wire.visible = name === 'pilot' && root.userData.wireOn !== false; root.userData.paintName = name; return name;
+  }
   var NOZ = [-0.375, -0.125, 0.125, 0.375], NOZ_Y = 0.40, NOZ_Z = 2.21; // 4 rear cold-gas nozzles: equal 0.25 m pitch, one row under the plate area (rear photos)
   function build() {
     var root = new T.Group(), body = new T.Group(); root.add(body);
-    var P = paint(), mats = { paint: P };
-    var glass = new T.MeshPhysicalMaterial({ color: 0x5a3a28, metalness: 0.9, roughness: 0.1, clearcoat: 1, clearcoatRoughness: 0.03, envMapIntensity: 0.75 }); // "Gold Glazed" (photos read bronze-rose)
-    var ti = new T.MeshStandardMaterial({ color: 0xb9a78c, metalness: 1, roughness: 0.3 });   // titanium/bronze accents + nozzles
+    var P = rimify(paint()), mats = { paint: P };
+    var glass = new T.MeshPhysicalMaterial({ color: 0x5a3a28, metalness: 0.9, roughness: 0.1, clearcoat: 1, clearcoatRoughness: 0.03, envMapIntensity: 0.75, transparent: true, opacity: 1 }); mats.glass = glass; // "Gold Glazed" (photos read bronze-rose)
+    var ti = new T.MeshStandardMaterial({ color: 0xb9a78c, metalness: 1, roughness: 0.3 }); mats.ti = ti;   // titanium/bronze accents + nozzles
     var black = new T.MeshStandardMaterial({ color: 0x101115, metalness: 0.25, roughness: 0.55, vertexColors: true });
-    var rubber = new T.MeshStandardMaterial({ color: 0x141416, roughness: 0.85, metalness: 0 });
-    var rimM = new T.MeshStandardMaterial({ color: 0x2a2b30, metalness: 0.9, roughness: 0.35 }), dishM = new T.MeshStandardMaterial({ color: 0x9a9da3, metalness: 0.6, roughness: 0.35 });
-    var lightM = new T.MeshBasicMaterial({ color: new T.Color(3, 3, 3), vertexColors: true });
+    var rubber = new T.MeshStandardMaterial({ color: 0x141416, roughness: 0.85, metalness: 0 }); mats.rubber = rubber;
+    var rimM = new T.MeshStandardMaterial({ color: 0x2a2b30, metalness: 0.9, roughness: 0.35 }), dishM = new T.MeshStandardMaterial({ color: 0x9a9da3, metalness: 0.6, roughness: 0.35 }); mats.rimM = rimM; mats.dishM = dishM; var edgeM = new T.MeshBasicMaterial({ color: new T.Color(1.5, 1.5, 1.5) }); mats.edge = edgeM;
+    var lightM = new T.MeshBasicMaterial({ color: new T.Color(4, 4, 4), vertexColors: true });
     // --- paint: body loft + nose and tail caps + roof spine (one draw)
     var NU = 96, NV = 60, bg = loft(NU, NV, bodyFn);
     var paintG = mergeG([[bg], [cap(bg, NU * (NV + 1), NV + 1, true)], [cap(bg, 0, NV + 1, false)], [loft(40, 6, spineFn)]]);
     var bm = new T.Mesh(paintG, P); bm.name = 'body'; bm.castShadow = true; bm.receiveShadow = true; body.add(bm);
+    var wire = new T.LineSegments(wireGeo(bg, NU, NV, 3, 3), wireMat()); wire.name = 'wire'; wire.renderOrder = 2; wire.frustumCulled = false; body.add(wire); root.userData.wire = wire;
     var gm = new T.Mesh(loft(70, 30, glassFn), glass); gm.name = 'glass'; gm.castShadow = true; body.add(gm);
     // --- black trim (one draw, vertex-coloured): liners, sills, splitter + nose intake, diffuser with 4 fans, skirts/fins, haunch vents, shut lines, nozzle throats
     var K = [], dk = 0x7a7c84, fan = 0x3a3c44;
     var linerG = new T.CylinderGeometry(ARCH - 0.04, ARCH - 0.04, 0.32, 24, 1, true, 0, Math.PI); linerG.rotateZ(Math.PI / 2); linerG.scale(1, 1, 1);
     WHEELS.forEach(function (w) { [-1, 1].forEach(function (sd) { K.push([linerG, [sd * (w[1] - 0.04), WR, -w[0]], 0x777777]); }); });
     [-1, 1].forEach(function (sd) {
-      K.push([new T.BoxGeometry(0.06, 0.13, 1.95), [sd * 0.9, 0.2, 0.0], dk]);                      // rocker / sill
+      K.push([new T.BoxGeometry(0.04, 0.07, 1.7), [sd * 0.9, 0.2, 0.0], dk]);                      // rocker / sill
       K.push([new T.BoxGeometry(0.012, 0.5, 0.012), [sd * 0.95, 0.5, -0.98, 0.18, 0, 0], dk]);      // front door shut line (slanted)
-      K.push([new T.BoxGeometry(0.06, 0.32, 0.5), [sd * 0.8, 0.2, 1.99], dk]);                       // rear diffuser fins / skirts
+      K.push([new T.BoxGeometry(0.04, 0.2, 0.4), [sd * 0.8, 0.27, 1.99], dk]);                       // rear diffuser fins / skirts
     });
     K.push([new T.BoxGeometry(1.75, 0.035, 0.32), [0, 0.12, -2.14], dk]);                            // front splitter blade
     K.push([new T.BoxGeometry(1.2, 0.12, 0.06), [0, 0.27, -2.24], dk]);                              // nose intake
-    K.push([new T.BoxGeometry(1.66, 0.36, 0.36), [0, 0.3, 2.02], dk]);                                // rear diffuser / fan box
+    K.push([new T.BoxGeometry(1.66, 0.36, 0.36), [0, 0.3, 2.02], dk]);
+    // v8: hood vent (dark panel + louvres following the hood slope), angular side intakes behind the doors, front corner vents
+    var hvL = 1.12, hvY = topAt(hvL, 0) + 0.006, hvA = -Math.atan((topAt(hvL - 0.15, 0) - topAt(hvL + 0.15, 0)) / 0.3);
+    K.push([new T.BoxGeometry(0.95, 0.014, 0.3), [0, hvY, -hvL, hvA, 0, 0], 0x2a2c31]);
+    for (var hs = -1; hs <= 1; hs++) K.push([new T.BoxGeometry(0.85, 0.022, 0.018), [0, hvY + 0.008, -hvL + hs * 0.085, hvA, 0, 0], 0x8a8d94]);
+    [-1, 1].forEach(function (sd) {
+      K.push([new T.BoxGeometry(0.03, 0.15, 0.36), [sd * 0.952, 0.6, 0.78, 0, 0, sd * -0.04], 0x2a2c31]);
+      for (var sl = 0; sl < 3; sl++) K.push([new T.BoxGeometry(0.034, 0.01, 0.32), [sd * 0.958, 0.56 + sl * 0.045, 0.78, 0, 0, sd * -0.04], 0x8a8d94]);
+      K.push([new T.BoxGeometry(0.03, 0.12, 0.34), [sd * 0.93, 0.36, -1.9, 0, 0, 0], 0x1a1b1f]);
+    });                                // rear diffuser / fan box
     NOZ.forEach(function (x) { var f = new T.CircleGeometry(0.1, 20); K.push([f, [x, 0.24, 2.205], fan]); var bl = new T.BoxGeometry(0.17, 0.018, 0.005); for (var b = 0; b < 3; b++) K.push([bl, [x, 0.24, 2.21, 0, 0, b * Math.PI / 3], dk]); // 4 suction fans (Cern Basher: four 20 kW fans)
       K.push([new T.CircleGeometry(0.042, 16), [x, NOZ_Y, NOZ_Z - 0.03], 0x000000]); });               // nozzle throats
     body.add(new T.Mesh(mergeG(K, true), black));
@@ -5006,7 +5196,7 @@ var RRCar = (function () {
       if (sd > 0) fp.push.apply(fp, a.concat(b, c, a, c, d)); else fp.push.apply(fp, a.concat(c, b, a, d, c));
       var tn = TONE[j] * (i === FL.length - 2 ? 0.85 : 1); for (var q = 0; q < 6; q++) fc.push(tn, tn, tn * 1.02); } });
     var facG = new T.BufferGeometry(); facG.setAttribute('position', new T.Float32BufferAttribute(fp, 3)); facG.setAttribute('uv', new T.Float32BufferAttribute(new Array(fp.length / 3 * 2).fill(0), 2)); facG.setAttribute('color', new T.Float32BufferAttribute(fc, 3)); facG.computeVertexNormals();
-    var facM = P.clone(); facM.flatShading = true; facM.vertexColors = true; mats.facet = facM; var fm = new T.Mesh(facG, facM); fm.name = 'rearFacets'; fm.castShadow = true; body.add(fm);
+    var facM = rimify(P.clone()); facM.flatShading = true; facM.vertexColors = true; mats.facet = facM; var fm = new T.Mesh(facG, facM); fm.name = 'rearFacets'; fm.castShadow = true; body.add(fm);
     var wt = 0.92, wb = 1.62, rw = [[-0.47, ROOF(-wt) + 0.014, wt], [0.47, ROOF(-wt) + 0.014, wt], [0.29, ROOF(-wb) + 0.03, wb], [-0.29, ROOF(-wb) + 0.03, wb]], rwG = new T.BufferGeometry();
     rwG.setAttribute('position', new T.Float32BufferAttribute([].concat(rw[0], rw[3], rw[2], rw[0], rw[2], rw[1]), 3)); rwG.setAttribute('uv', new T.Float32BufferAttribute(new Array(12).fill(0), 2)); rwG.computeVertexNormals();
     var rwM = new T.MeshPhysicalMaterial({ color: 0x07070a, metalness: 0.2, roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.05 }); var rwm = new T.Mesh(rwG, rwM); rwm.name = 'rearWindow'; body.add(rwm);
@@ -5018,46 +5208,54 @@ var RRCar = (function () {
     [-1, 1].forEach(function (sd) { for (var i = 0; i < FL.length - 1; i++) crease(fv(FL[i], 0.78, sd), fv(FL[i + 1], 0.78, sd)); crease(fv(-2.0, 0.5, sd), fv(-2.0, 0.93, sd)); }); // v4.1: outer crease + rear-deck break line
     var crm = new T.Mesh(mergeG(CR), crM); crm.name = 'creaseHighlights'; body.add(crm); // toon-style crisp highlight along each haunch crease
     // --- the 4 rear cold-gas nozzles (own mesh so tests can ray-cast them from behind)
-    var nozG = new T.CylinderGeometry(0.055, 0.062, 0.12, 20, 1, true); nozG.rotateX(Math.PI / 2);
-    var ring = new T.TorusGeometry(0.058, 0.01, 6, 20), N = [], nozzles = [];
-    NOZ.forEach(function (x) { N.push([nozG, [x, NOZ_Y, NOZ_Z - 0.04]]); N.push([ring, [x, NOZ_Y, NOZ_Z + 0.02]]); var mk = new T.Object3D(); mk.position.set(x, NOZ_Y, NOZ_Z); body.add(mk); nozzles.push(mk); });
+    var nozG = new T.LatheGeometry([[0.03, 0], [0.038, 0.03], [0.05, 0.065], [0.074, 0.105], [0.098, 0.135], [0.104, 0.146], [0.094, 0.15], [0.088, 0.14], [0.068, 0.108], [0.046, 0.07], [0.03, 0.035], [0.022, 0]].map(function (p) { return new T.Vector2(p[0], p[1]); }), 24); nozG.rotateX(Math.PI / 2); // v8: gold bell (flared cold-gas nozzle), mouth faces aft
+    var ring = new T.TorusGeometry(0.1, 0.008, 6, 24), N = [], nozzles = [];
+    NOZ.forEach(function (x) { N.push([nozG, [x, NOZ_Y, NOZ_Z - 0.1]]); N.push([ring, [x, NOZ_Y, NOZ_Z + 0.045]]); var mk = new T.Object3D(); mk.position.set(x, NOZ_Y, NOZ_Z); body.add(mk); nozzles.push(mk); });
+    // v8: brass suspension arms (visible in the arches / under the diffuser) + a manifold tube feeding the nozzles
+    function rod(a, b, r) { var d = new T.Vector3(b[0] - a[0], b[1] - a[1], b[2] - a[2]), len = d.length(), g3 = new T.CylinderGeometry(r, r, len, 8, 1); var e = new T.Euler().setFromQuaternion(new T.Quaternion().setFromUnitVectors(new T.Vector3(0, 1, 0), d.normalize()));
+      N.push([g3, [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2, e.x, e.y, e.z]]); }
+    [-1, 1].forEach(function (sd) { WHEELS.forEach(function (w) { var zc = -w[0], xh = sd * (w[1] - 0.12);
+      rod([sd * 0.32, 0.3, zc + 0.3], [xh, WR - 0.02, zc], 0.014); rod([sd * 0.32, 0.3, zc - 0.3], [xh, WR - 0.02, zc], 0.014); rod([sd * 0.34, 0.5, zc], [xh, WR + 0.16, zc], 0.012); }); });
+    rod([-0.55, 0.53, 2.16], [0.55, 0.53, 2.16], 0.028); NOZ.forEach(function (x) { rod([x, 0.53, 2.16], [x, NOZ_Y + 0.07, NOZ_Z - 0.06], 0.016); });
     var nozMesh = new T.Mesh(mergeG(N), ti); nozMesh.name = 'rearNozzles'; body.add(nozMesh);
     // --- titanium bits: calipers (static)
     var TI = []; WHEELS.forEach(function (w) { [-1, 1].forEach(function (sd) { TI.push([new T.BoxGeometry(0.05, 0.12, 0.16), [sd * (w[1] - 0.1), WR + 0.13, -w[0] + 0.1]]); }); });
     body.add(new T.Mesh(mergeG(TI), ti));
     // --- lights (one draw): full-width tail bar with corner wraps, thin hidden-headlight strip on the nose edge, amber side markers
     var LI = [], red = 0xff1a2a, wht = 0xe8f4ff, amb = 0xff7a10;
-    LI.push([new T.BoxGeometry(1.86, 0.034, 0.02), [0, 0.8, 2.155], red]); // v4: bolder, more readable tail bar
-    [-1, 1].forEach(function (sd) { LI.push([new T.BoxGeometry(0.02, 0.022, 0.16), [sd * 0.94, 0.8, 2.07, 0, sd * 0.25, 0], red]); LI.push([new T.BoxGeometry(0.01, 0.018, 0.12), [sd * 0.985, 0.745, -1.08], amb]); });
-    LI.push([new T.BoxGeometry(1.2, 0.012, 0.02), [0, 0.52, -2.255], wht]);
+    LI.push([new T.BoxGeometry(1.86, 0.046, 0.024), [0, 0.84, 2.153], red]); // v8: full-width red LED bar, thicker, HDR (blooms red)
+    [-1, 1].forEach(function (sd) { LI.push([new T.BoxGeometry(0.02, 0.022, 0.16), [sd * 0.94, 0.84, 2.07, 0, sd * 0.25, 0], red]); LI.push([new T.BoxGeometry(0.01, 0.018, 0.12), [sd * 0.985, 0.745, -1.08], amb]); });
+    LI.push([new T.BoxGeometry(1.24, 0.02, 0.02), [0, 0.52, -2.255], wht]); // v8: full-width white LED bar on the nose
+    [-1, 1].forEach(function (sd) { LI.push([new T.BoxGeometry(0.2, 0.026, 0.02), [sd * 0.5, 0.585, -2.13, 0.14, sd * 0.3, 0], wht]); }); // two small white headlights
     body.add(new T.Mesh(mergeG(LI, true), lightM));
     // --- wheels: per axle one spinning mesh, 3 draw groups (tyre, 6 twin spokes + hub, light aero dish)
     var prof = [[0.29, -0.135], [0.32, -0.14], [0.343, -0.13], [0.35, -0.1], [0.352, 0], [0.35, 0.1], [0.343, 0.13], [0.32, 0.14], [0.29, 0.135]].map(function (p) { return new T.Vector2(p[0], p[1]); });
     var tyreG = new T.LatheGeometry(prof, 40); tyreG.rotateZ(Math.PI / 2);
-    var spoke = new T.BoxGeometry(0.014, 0.23, 0.026); spoke.translate(0, 0.165, 0);
-    var hub = new T.CylinderGeometry(0.055, 0.065, 0.05, 16), dish = new T.CylinderGeometry(0.285, 0.285, 0.02, 32), barrel = new T.CylinderGeometry(0.285, 0.285, 0.22, 32, 1, true);
+    var spoke = new T.BoxGeometry(0.016, 0.24, 0.034); spoke.translate(0, 0.165, 0);
+    var edgeG = new T.TorusGeometry(0.29, 0.007, 6, 40), hub = new T.CylinderGeometry(0.055, 0.065, 0.05, 16), dish = new T.CylinderGeometry(0.285, 0.285, 0.02, 32), barrel = new T.CylinderGeometry(0.285, 0.285, 0.22, 32, 1, true);
     root.userData.wheels = [];
     WHEELS.forEach(function (w) {
-      var ty = [], rm = [], ds = [];
+      var ty = [], rm = [], ds = [], ed = [];
       [-1, 1].forEach(function (sd) { var cx = sd * w[1];
         ty.push([tyreG, [cx, 0, 0]]);
-        for (var i = 0; i < 6; i++) { var a = i * Math.PI / 3; rm.push([spoke, [cx + sd * 0.11, 0, 0, a + 0.07, 0, 0]]); rm.push([spoke, [cx + sd * 0.11, 0, 0, a - 0.07, 0, 0]]); }
-        rm.push([hub, [cx + sd * 0.115, 0, 0, 0, 0, Math.PI / 2]]); ds.push([dish, [cx + sd * 0.085, 0, 0, 0, 0, Math.PI / 2]]); ds.push([barrel, [cx, 0, 0, 0, 0, Math.PI / 2]]); });
-      var axle = new T.Mesh(groups([mergeG(ty), mergeG(rm), mergeG(ds)]), [rubber, rimM, dishM]); axle.name = 'axle'; axle.castShadow = true;
+        for (var i = 0; i < 5; i++) { var a = i * Math.PI * 2 / 5; rm.push([spoke, [cx + sd * 0.11, 0, 0, a + 0.07, 0, 0]]); rm.push([spoke, [cx + sd * 0.11, 0, 0, a - 0.07, 0, 0]]); }
+        rm.push([hub, [cx + sd * 0.115, 0, 0, 0, 0, Math.PI / 2]]); ds.push([dish, [cx + sd * 0.085, 0, 0, 0, 0, Math.PI / 2]]); ds.push([barrel, [cx, 0, 0, 0, 0, Math.PI / 2]]); ed.push([edgeG, [cx + sd * 0.1, 0, 0, 0, Math.PI / 2, 0]]); });
+      var axle = new T.Mesh(groups([mergeG(ty), mergeG(rm), mergeG(ds), mergeG(ed)]), [rubber, rimM, dishM, edgeM]); axle.name = 'axle'; axle.castShadow = true;
       axle.position.set(0, WR, -w[0]); body.add(axle); root.userData.wheels.push(axle);
     });
     // --- active rear wing: flush on the deck when stowed (studio rear photos), raised on struts when deployed (rear 3/4 + flight photos)
     var wing = new T.Group(), WG = [], WL = [];
     WG.push([new T.BoxGeometry(1.92, 0.035, 0.42), [0, 0, 0, -0.06, 0, 0]]);
-    [-1, 1].forEach(function (sd) { WG.push([new T.BoxGeometry(0.03, 0.1, 0.46), [sd * 0.96, -0.06, 0]]); WG.push([new T.BoxGeometry(0.035, 0.5, 0.07), [sd * 0.42, -0.27, 0.04]]); WL.push([new T.BoxGeometry(0.035, 0.02, 0.3), [sd * 0.975, -0.04, 0.02], red]); });
+    [-1, 1].forEach(function (sd) { WG.push([new T.BoxGeometry(0.03, 0.1, 0.46), [sd * 0.96, -0.06, 0]]); WG.push([new T.BoxGeometry(0.035, 0.26, 0.07), [sd * 0.42, -0.15, 0.04]]); WL.push([new T.BoxGeometry(0.035, 0.02, 0.3), [sd * 0.975, -0.04, 0.02], red]); });
     wing.add(new T.Mesh(mergeG(WG), P)); wing.add(new T.Mesh(mergeG(WL, true), lightM));
-    wing.userData.stowY = DECK(-1.95) - 0.005; wing.userData.upY = DECK(-1.95) + 0.33; wing.userData.stowZ = 1.93; wing.userData.upZ = 2.06; wing.position.set(0, wing.userData.stowY, 1.93); body.add(wing);
-    root.userData.body = body; root.userData.bodyMesh = bm; root.userData.nozzles = nozzles; root.userData.nozzleMesh = nozMesh; root.userData.wing = wing; root.userData.mats = mats;
+    wing.userData.stowY = DECK(-1.95) - 0.005; wing.userData.upY = DECK(-1.95) + 0.17; wing.userData.stowZ = 1.93; wing.userData.upZ = 2.06; wing.position.set(0, wing.userData.stowY, 1.93); body.add(wing);
+    root.userData.body = body; root.userData.bodyMesh = bm; root.userData.nozzles = nozzles; root.userData.nozzleMesh = nozMesh; root.userData.wing = wing; root.userData.mats = mats; root.userData.wing = wing;
+    setPaint(root, 'ano');
     return root;
   }
   // side-silhouette top edge (max height over the section) for the photo-match test
   function sideTop(L) { var y = topAt(L, 0.78); if (L <= GL1 && L >= GL0) y = Math.max(y, ROOF(L)); return y; }
-  return { build: build, paint: paint, topAt: topAt, sideTop: sideTop, WID: WID, WHEELS: WHEELS, WR: WR, NOZ: NOZ, NOZ_Y: NOZ_Y, NOZ_Z: NOZ_Z, L0: L0, L1: L1 };
+  return { build: build, setPaint: setPaint, PAINTS: PAINTS, WIRE: WIRE, RIM: RIM, paint: paint, topAt: topAt, sideTop: sideTop, WID: WID, WHEELS: WHEELS, WR: WR, NOZ: NOZ, NOZ_Y: NOZ_Y, NOZ_Z: NOZ_Z, L0: L0, L1: L1 };
 })();
 
 /* Roadster Rush v1 — Three.js renderer. Reads RRLogic state, never changes gameplay. v7: Tube Run (circular tunnel, car + camera roll around the tube axis), no-pop obstacle culling. */
@@ -5065,11 +5263,11 @@ var RRRender = (function () {
   var T = THREE, C = RRLogic.C;
   var R = {}, post, renderer, scene, camera, clock = 0, quality = { dpr: 1, shadows: true, level: 0 }; /* v4: random camera shake removed */
   R.hor = new T.Color(0.86, 0.46, 0.96); // v4: one shared horizon colour for the sky shader, the fog, the terrain and the ridges
-  var car, carBody, wheels = [], nozzleGlow, plumes = [], shieldMesh, lightBarGlow, tailGlow, drone, droneProps;
+  var car, carBody, wheels = [], nozzleGlow, plumes = [], shieldMesh, lightBarGlow, tailGlow, tailHaze, drone, droneProps, coneG, mistG, mistMat, coneMats = [];
   var I = {}; // instanced meshes
   var arches, partsSmoke, partsSpark, dummy = new T.Object3D(), col = new T.Color();
   var road, roadTex, rails = [];
-  var TR = C.TUBE_R, TSL = C.TUBE_SLOTS, SLR = Math.PI * 2 / TSL, TSEG = 6, NTUBE = 50, tX = RRLogic.tubeX, tY = RRLogic.tubeY, TUBE_SKYC = new T.Color(0x9aa3b8), TUBE_GNDC = new T.Color(0x4a4f5c), DARK = { hor: [0.075, 0.08, 0.1], mid: [0.055, 0.06, 0.08], top: [0.03, 0.032, 0.045], fog: 0x15171d };
+  var TR = C.TUBE_R, TSL = C.TUBE_SLOTS, SLR = Math.PI * 2 / TSL, TSEG = 6, NTUBE = 50, tX = function (th, h) { return RRLogic.tubeX(th, h, R.tr); }, tY = function (th, h) { return RRLogic.tubeY(th, h, R.tr); }, TUBE_SKYC = new T.Color(0x9aa3b8), TUBE_GNDC = new T.Color(0x4a4f5c), DARK = { hor: [0.075, 0.08, 0.1], mid: [0.055, 0.06, 0.08], top: [0.03, 0.032, 0.045], fog: 0x15171d };
   function canvasTex(w, h, draw, rep) { var c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); var t = new T.CanvasTexture(c); t.colorSpace = T.SRGBColorSpace; t.anisotropy = 4; if (rep) { t.wrapS = t.wrapT = T.RepeatWrapping; } return t; }
   function glowTex() { return canvasTex(64, 64, function (g, w) { var gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.25, 'rgba(255,255,255,0.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); }); }
   function merge(list) { // [{geo, m: Matrix4}] -> one BufferGeometry (non-indexed)
@@ -5094,8 +5292,9 @@ var RRRender = (function () {
   function buildCar() {
     var g = RRCar.build(); R.bodyMesh = g.userData.bodyMesh; wheels = g.userData.wheels; var nozzles = g.userData.nozzles; R.carGroup = g; R.wing = g.userData.wing; R.nozzleMesh = g.userData.nozzleMesh;
     var gt = glowTex();
-    lightBarGlow = new T.Sprite(new T.SpriteMaterial({ map: gt, color: 0xbfe6ff, blending: T.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.8 })); lightBarGlow.scale.set(1.8, 0.22, 1); lightBarGlow.position.set(0, 0.52, -2.31); g.add(lightBarGlow);
-    tailGlow = new T.Sprite(new T.SpriteMaterial({ map: gt, color: 0xff2040, blending: T.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.9 })); tailGlow.scale.set(2.3, 0.16, 1); tailGlow.position.set(0, 0.8, 2.22); g.add(tailGlow);
+    lightBarGlow = new T.Sprite(new T.SpriteMaterial({ map: gt, color: 0xffffff, blending: T.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.8 })); lightBarGlow.scale.set(2.1, 0.3, 1); lightBarGlow.position.set(0, 0.52, -2.31); g.add(lightBarGlow);
+    tailGlow = new T.Sprite(new T.SpriteMaterial({ map: gt, color: 0xff2040, blending: T.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.9 })); tailGlow.scale.set(2.9, 0.34, 1); tailGlow.position.set(0, 0.84, 2.22); g.add(tailGlow);
+    tailHaze = new T.Sprite(new T.SpriteMaterial({ map: gt, color: 0xff0a1c, blending: T.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.3 })); tailHaze.scale.set(3.6, 1.0, 1); tailHaze.position.set(0, 0.82, 2.5); g.add(tailHaze); // v8: the red LED bar's bloom spills out as a soft red haze
     nozzleGlow = []; nozzles.forEach(function (n) { var sp = new T.Sprite(new T.SpriteMaterial({ map: gt, color: 0x9fe8ff, blending: T.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0 })); sp.position.copy(n.position).add(new T.Vector3(0, 0, 0.12)); sp.scale.set(0.36, 0.36, 1); g.add(sp); nozzleGlow.push(sp); });
     var plG = new T.ConeGeometry(0.075, 1.6, 12, 1, true); plG.rotateX(-Math.PI / 2); plG.translate(0, 0, 0.8);
     var plM = new T.ShaderMaterial({ transparent: true, blending: T.AdditiveBlending, depthWrite: false, side: T.DoubleSide, uniforms: { opacity: { value: 0 }, t: { value: 0 } }, vertexShader: 'varying vec2 vu;void main(){vu=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}', fragmentShader: 'uniform float opacity;uniform float t;varying vec2 vu;void main(){float a=pow(vu.y,1.6)*(0.75+0.25*sin(vu.y*40.-t*60.));gl_FragColor=vec4(mix(vec3(0.55,0.85,1.),vec3(1.),vu.y)*a*opacity*2.5,1.);}' });
@@ -5104,8 +5303,19 @@ var RRRender = (function () {
     shieldMesh.scale.set(1, 0.62, 1.15); shieldMesh.position.y = 0.6; shieldMesh.visible = false; g.add(shieldMesh);
     var blobT = canvasTex(64, 64, function (c) { var gr = c.createRadialGradient(32, 32, 4, 32, 32, 32); gr.addColorStop(0, 'rgba(0,0,0,0.6)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = gr; c.fillRect(0, 0, 64, 64); });
     R.blob = new T.Mesh(new T.PlaneGeometry(2.5, 5.0), new T.MeshBasicMaterial({ map: blobT, transparent: true, depthWrite: false })); R.blob.rotation.x = -Math.PI / 2; R.blob.position.y = 0.02; R.blob.renderOrder = 1;
+    // v8: soft grey headlight cones on the ground (ahead of the nose) + a faint mist trail behind the tail. Both are flat additive gradients (2 + 1 draws), tier-gated.
+    var coneVS = 'varying vec2 vu;void main(){vu=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}';
+    var coneFS = 'uniform float op;varying vec2 vu;void main(){float u=vu.x*2.-1.;float hw=mix(0.16,1.,vu.y);float a=smoothstep(1.,0.15,abs(u)/hw)*pow(1.-vu.y,1.6)*smoothstep(0.,0.04,vu.y);gl_FragColor=vec4(vec3(0.78,0.84,0.95)*a*op,a*op);}';
+    coneG = new T.Group(); [-1, 1].forEach(function (sd) {
+      var cg = new T.PlaneGeometry(1, 1); cg.rotateX(-Math.PI / 2); cg.translate(0, 0, -0.5);
+      var cm = new T.ShaderMaterial({ transparent: true, depthWrite: false, blending: T.AdditiveBlending, uniforms: { op: { value: 0.3 } }, vertexShader: coneVS, fragmentShader: coneFS }); coneMats.push(cm);
+      var c = new T.Mesh(cg, cm); c.scale.set(3.4, 1, 12.5); c.position.set(sd * 0.5, 0, -2.2); c.rotation.y = sd * 0.05; c.renderOrder = 1; c.frustumCulled = false; coneG.add(c); });
+    var mg = new T.PlaneGeometry(1, 1); mg.rotateX(-Math.PI / 2); mg.translate(0, 0, 0.5);
+    mistMat = new T.ShaderMaterial({ transparent: true, depthWrite: false, blending: T.AdditiveBlending, uniforms: { op: { value: 0.2 }, t: { value: 0 } }, vertexShader: coneVS,
+      fragmentShader: 'uniform float op;uniform float t;varying vec2 vu;float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}float n(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x),f.y);}void main(){float u=vu.x*2.-1.;float hw=mix(0.35,1.,vu.y);float edge=smoothstep(1.,0.2,abs(u)/hw);float q=n(vec2(u*2.2,vu.y*5.-t*1.6))*0.65+n(vec2(u*4.5+3.,vu.y*11.-t*2.3))*0.35;float a=edge*q*pow(1.-vu.y,1.4)*smoothstep(0.,0.05,vu.y);gl_FragColor=vec4(vec3(0.6,0.64,0.72)*a*op,a*op);}' });
+    mistG = new T.Mesh(mg, mistMat); mistG.scale.set(3.4, 1, 14); mistG.position.set(0, 0, 2.3); mistG.renderOrder = 1; mistG.frustumCulled = false;
     carBody = new T.Group(); carBody.add(g);
-    var root = new T.Group(); root.add(carBody); root.add(R.blob); root.userData.paint = g.userData.mats.paint; return root;
+    var root = new T.Group(); root.add(carBody); root.add(R.blob); root.add(coneG); root.add(mistG); root.userData.paint = g.userData.mats.paint; return root;
   }
 
   // ---------- the friendly chaser: Bolt the helper drone ----------
@@ -5242,18 +5452,18 @@ var RRRender = (function () {
     R.streaks = []; for (var i = 0; i < 56; i++) { var a = Math.random() * Math.PI * 2, r = 3.5 + Math.random() * 6; R.streaks.push({ x: Math.cos(a) * r, y: 2.5 + Math.abs(Math.sin(a)) * r * 0.8, z: Math.random() * 60 }); }
     ['tunnel', 'rib', 'pylon', 'streak'].forEach(function (k) { I[k].frustumCulled = false; I[k].count = 0; I[k].instanceMatrix.setUsage(T.DynamicDrawUsage); scene.add(I[k]); });
   }
-  function drawSetPieces(g, zI, x, y, dt, app, tzCut) {
+  function drawSetPieces(g, zI, x, y, dt, app, tzCut, tzEnd) {
     var i, n = 0, nr = 0, m = ((g.z % CY) + CY) % CY, cs = g.z - m; // cycle start (distance units)
     var wT = zoneW(m, Z_TUN - 10, Z_PORT - 20), wP = zoneW(m, Z_PORT, Z_SKY), wS = zoneW(m, Z_SKY, CY + 15) + zoneW(m + CY, Z_SKY, CY + 15);
     R.wT = wT; R.wP = wP; R.wS = wS;
     // tunnel segments within view (this cycle or the next)
     var k0 = Math.floor((g.z - 20) / SEG), k1 = Math.floor((g.z + C.VIEW) / SEG);
-    for (var k = k0; k <= k1 && n < NSEG; k++) { var sz = k * SEG, sm2 = ((sz % CY) + CY) % CY; if (sm2 < Z_TUN || sm2 >= Z_PORT || sz + SEG > tzCut) continue;
+    for (var k = k0; k <= k1 && n < NSEG; k++) { var sz = k * SEG, sm2 = ((sz % CY) + CY) % CY; if (sm2 < Z_TUN || sm2 >= Z_PORT || (sz + SEG > tzCut && sz < tzEnd)) continue;
       dummy.position.set(0, 0, -(sz + SEG / 2)); dummy.rotation.set(0, 0, 0); dummy.scale.set(1, 1, 1); dummy.updateMatrix(); I.tunnel.setMatrixAt(n++, dummy.matrix);
       if (k % 2 === 0) { dummy.position.z = -sz; dummy.updateMatrix(); I.rib.setMatrixAt(nr++, dummy.matrix); } }
     I.tunnel.count = n; I.rib.count = nr;
     // pylons under the sky bridge
-    var np = 0, p0 = Math.floor((g.z - 20) / 24); for (k = p0; k < p0 + 16; k++) { var pz = k * 24, pm = ((pz % CY) + CY) % CY; if (pm < Z_SKY + 10 || pm > CY - 10 || pz > tzCut) continue; dummy.position.set(0, 0, -pz); dummy.rotation.set(0, 0, 0); dummy.scale.set(1, 1, 1); dummy.updateMatrix(); I.pylon.setMatrixAt(np++, dummy.matrix); }
+    var np = 0, p0 = Math.floor((g.z - 20) / 24); for (k = p0; k < p0 + 16; k++) { var pz = k * 24, pm = ((pz % CY) + CY) % CY; if (pm < Z_SKY + 10 || pm > CY - 10 || (pz > tzCut && pz < tzEnd)) continue; dummy.position.set(0, 0, -pz); dummy.rotation.set(0, 0, 0); dummy.scale.set(1, 1, 1); dummy.updateMatrix(); I.pylon.setMatrixAt(np++, dummy.matrix); }
     I.pylon.count = np;
     var tk = R.tubeK || 0, skyOn = wS > 0.5; R.ground.visible = !skyOn && tk < 1; R.clouds.visible = wS > 0.01 && tk < 0.5; R.clouds.position.set(x, -38, zI - 200); R.clouds.material.map.offset.y = -g.z / 150;
     // spaceport: towers + a scripted launch keyed to player distance
@@ -5298,7 +5508,7 @@ var RRRender = (function () {
     I.barrier = new T.InstancedMesh(merge([{ geo: new T.BoxGeometry(2.4, 0.55, 0.4), m: M(0, 0.62, 0) }, { geo: new T.BoxGeometry(0.2, 0.4, 0.3), m: M(-0.95, 0.2, 0) }, { geo: new T.BoxGeometry(0.2, 0.4, 0.3), m: M(0.95, 0.2, 0) }]), new T.MeshStandardMaterial({ map: bt, roughness: 0.4, metalness: 0.1, emissive: 0xff7a1a, emissiveIntensity: 0.15 }), NB);
     I.barrierLight = new T.InstancedMesh(new T.BoxGeometry(2.3, 0.06, 0.42), new T.MeshBasicMaterial({ color: 0xffd36a }), NB);
     // overhead bar: gantry with glowing red underside — duck under
-    I.bar = new T.InstancedMesh(merge([{ geo: new T.BoxGeometry(2.7, 0.75, 0.45), m: M(0, 1.45, 0) }, { geo: new T.BoxGeometry(0.22, 1.9, 0.3), m: M(-1.3, 0.95, 0) }, { geo: new T.BoxGeometry(0.22, 1.9, 0.3), m: M(1.3, 0.95, 0) }]), new T.MeshStandardMaterial({ map: stripeTex('#2b2f45', '#ffd34d'), roughness: 0.4, metalness: 0.5 }), NB);
+    I.bar = new T.InstancedMesh(merge([{ geo: new T.BoxGeometry(2.7, 0.75, 0.45), m: M(0, 1.45, 0) }, { geo: new T.BoxGeometry(0.22, 3.7, 0.3), m: M(-1.3, 1.85, 0) }, { geo: new T.BoxGeometry(0.22, 3.7, 0.3), m: M(1.3, 1.85, 0) }, { geo: new T.BoxGeometry(2.7, 1.7, 0.35), m: M(0, 2.7, 0) }]), new T.MeshStandardMaterial({ map: stripeTex('#2b2f45', '#ffd34d'), roughness: 0.4, metalness: 0.5 }), NB);
     I.barLight = new T.InstancedMesh(new T.BoxGeometry(2.5, 0.06, 0.47), new T.MeshBasicMaterial({ color: 0xff3a6a }), NB);
     // v7 tube gate: a solid hazard panel (plain slate with amber chevrons and a red top light); the car cannot duck it, it has to switch walls
     I.tgate = new T.InstancedMesh(new T.BoxGeometry(2.5, 1.7, 0.6), new T.MeshStandardMaterial({ map: stripeTex('#2a2d36', '#e0a31a'), roughness: 0.5, metalness: 0.3 }), NB);
@@ -5348,16 +5558,17 @@ var RRRender = (function () {
     I.trib = new T.InstancedMesh(new T.TorusGeometry(TR - 0.04, 0.13, 6, 64), new T.MeshStandardMaterial({ color: 0x393c44, roughness: 0.7, metalness: 0.3 }), NTUBE);
     I.tlamp = new T.InstancedMesh(new T.BoxGeometry(1.8, 0.07, 0.6), new T.MeshBasicMaterial({ color: new T.Color(0xe9e4d2).multiplyScalar(1.05) }), 14);
     R.portal = new T.Group(); var pm = new T.Mesh(new T.TorusGeometry(TR + 0.2, 0.5, 8, 64), new T.MeshStandardMaterial({ color: 0x575b66, roughness: 0.6, metalness: 0.3 })); R.portal.add(pm);
-    var pl = new T.Mesh(new T.TorusGeometry(TR - 0.35, 0.07, 6, 64), new T.MeshBasicMaterial({ color: new T.Color(0xffb96b).multiplyScalar(1.1) })); R.portal.add(pl); R.portal.visible = false; scene.add(R.portal);
+    var pl = new T.Mesh(new T.TorusGeometry(TR - 0.35, 0.07, 6, 64), new T.MeshBasicMaterial({ color: new T.Color(0xffb96b).multiplyScalar(1.1) })); R.portal.add(pl); R.portal.visible = false; scene.add(R.portal); R.portalX = R.portal.clone(); R.portalX.visible = false; scene.add(R.portalX);
     ['tshell', 'trib', 'tlamp'].forEach(function (k) { I[k].frustumCulled = false; I[k].count = 0; I[k].instanceMatrix.setUsage(T.DynamicDrawUsage); scene.add(I[k]); });
   }
-  function drawTube(g, gz, mouthZ, on) {
-    var n = 0, nl = 0, k0 = Math.max(Math.ceil(mouthZ / TSEG), Math.floor((gz - 24) / TSEG)), k1 = Math.floor((gz + C.VIEW + 24) / TSEG);
-    R.portal.visible = !!on && mouthZ > gz - 60 && mouthZ < gz + C.VIEW + 40; if (R.portal.visible) R.portal.position.set(0, TR, -mouthZ);
+  function drawTube(g, gz, mouthZ, endZ, on) {
+    var tr = R.tr || TR, sc = tr / TR, n = 0, nl = 0, k0 = Math.max(Math.ceil(mouthZ / TSEG), Math.floor((gz - 24) / TSEG)), k1 = Math.min(Math.floor((gz + C.VIEW + 24) / TSEG), Math.round(endZ / TSEG) - 1);
+    R.portal.visible = !!on && mouthZ > gz - 60 && mouthZ < gz + C.VIEW + 40; if (R.portal.visible) { R.portal.position.set(0, tr, -mouthZ); R.portal.scale.set(sc, sc, 1); }
+    R.portalX.visible = !!on && endZ < 1e11 && endZ > gz - 30 && endZ < gz + C.VIEW + 40; if (R.portalX.visible) { R.portalX.position.set(0, tr, -endZ); R.portalX.scale.set(sc, sc, 1); }
     if (on) for (var k = k0; k <= k1 && n < NTUBE; k++) {
-      dummy.rotation.set(0, 0, 0); dummy.scale.set(1, 1, 1); dummy.position.set(0, TR, -(k * TSEG + TSEG / 2)); dummy.updateMatrix(); I.tshell.setMatrixAt(n, dummy.matrix);
+      dummy.rotation.set(0, 0, 0); dummy.scale.set(sc, sc, 1); dummy.position.set(0, tr, -(k * TSEG + TSEG / 2)); dummy.updateMatrix(); I.tshell.setMatrixAt(n, dummy.matrix);
       dummy.position.z = -k * TSEG; dummy.updateMatrix(); I.trib.setMatrixAt(n, dummy.matrix);
-      if (k % 6 === 0 && nl < 14) { dummy.position.set(0, 2 * TR - 0.12, -(k * TSEG + TSEG / 2)); dummy.updateMatrix(); I.tlamp.setMatrixAt(nl++, dummy.matrix); }
+      if (k % 6 === 0 && nl < 14) { dummy.scale.set(1, 1, 1); dummy.position.set(0, 2 * tr - 0.12, -(k * TSEG + TSEG / 2)); dummy.updateMatrix(); I.tlamp.setMatrixAt(nl++, dummy.matrix); }
       n++;
     }
     I.tshell.count = I.trib.count = n; I.tlamp.count = nl; I.tshell.instanceMatrix.needsUpdate = I.trib.instanceMatrix.needsUpdate = I.tlamp.instanceMatrix.needsUpdate = true;
@@ -5400,7 +5611,7 @@ var RRRender = (function () {
     var rim = R.rim = new T.DirectionalLight(0xff8fd8, 0.9); rim.position.set(5, 4, -10); scene.add(rim);
     buildWorld(); buildPools(); buildSetPieces(); buildTube();
     [I.tshell.material, I.trib.material].forEach(function (m) { m.envMap = scene.environment; m.envMapIntensity = 0.1; }); // v7: tunnel stays plain grey, not tinted by the purple city sky
-    car = buildCar(); car.traverse(function (o) { if (o.isMesh && o.material && !o.material.isMeshBasicMaterial && o.material.type !== 'ShaderMaterial') o.castShadow = true; }); scene.add(car);
+    car = buildCar(); car.traverse(function (o) { if (o.isMesh && o.material && !o.material.isMeshBasicMaterial && o.material.type !== 'ShaderMaterial') o.castShadow = true; }); scene.add(car); R.setPaint('ano'); buildShow();
     drone = buildDrone(); scene.add(drone);
     partsSmoke = new Particles(500, false); partsSpark = new Particles(500, true); scene.add(partsSmoke.pts); scene.add(partsSpark.pts);
     R.resize();
@@ -5432,7 +5643,7 @@ var RRRender = (function () {
   R.warm = function () {
     var vis = []; scene.traverse(function (o) { if (!o.visible) { vis.push(o); o.visible = true; } });
     for (var k in I) I[k].count = Math.max(1, I[k].count);
-    var t0 = performance.now(); renderer.compile(scene, camera); post.render(scene, camera); for (k in I) I[k].count = 0; for (var i = 0; i < vis.length; i++) vis[i].visible = false;
+    var t0 = performance.now(); renderer.compile(scene, camera); post.render(scene, camera); R.showScene.add(car); renderer.compile(R.showScene, camera); post.render(R.showScene, camera); (R.inShow ? R.showScene : scene).add(car); /* v8: both scenes are warm before the first frame */ for (k in I) I[k].count = 0; for (var i = 0; i < vis.length; i++) vis[i].visible = false;
     R.warmMs = performance.now() - t0; R.programs = renderer.info.programs ? renderer.info.programs.length : 0;
   };
   R.quality = function () { return quality; };
@@ -5461,7 +5672,7 @@ var RRRender = (function () {
     var al = alpha == null ? 1 : alpha, gz = g.pz + (g.z - g.pz) * al, z = -gz, x = g.px + (g.x - g.px) * al, y = g.py + (g.y - g.py) * al;
     var flying = g.rocketT > 0, sliding = g.slideT > 0 && !g.air;
     // car pose
-    var inTube = g.mode === 'tube', tk = inTube ? Math.min(1, Math.max(0, g.tubeBlend)) : 0; tk = tk * tk * (3 - 2 * tk); R.tubeK = tk;
+    var inTube = g.mode === 'tube', tk = Math.min(1, Math.max(0, g.tubeBlend)); R.tr = g.tubeR || TR; tk = tk * tk * (3 - 2 * tk); R.tubeK = tk;
     var th = inTube ? (g.pang + (g.ang - g.pang) * al) * SLR : 0, sT = Math.sin(th), cT = Math.cos(th); R.th = th;
     var bx0 = tX(th, 0) + x * cT, by0 = tY(th, 0) + x * sT; // base point on the surface under the car (road: (x, 0))
     car.position.set(tX(th, y) + x * cT, tY(th, y) + x * sT, z); car.rotation.z = th; R.blob.position.y = 0.02 + (g.ground - y); var bs = Math.max(0.3, 1 - (y - g.ground) * 0.12); R.blob.scale.set(bs, bs, 1); R.blob.visible = !flying || y < 3;
@@ -5480,13 +5691,22 @@ var RRRender = (function () {
     var spin = g.speed * dt / RRCar.WR; for (var i = 0; i < wheels.length; i++) wheels[i].rotation.x -= spin;
     // v3 active rear wing: flush when cruising, raised for the thrust boost, half-raised for stability in a hop
     var wTgt = flying ? 1 : g.air ? 0.5 : 0; R.wingK = (R.wingK || 0) + (wTgt - (R.wingK || 0)) * Math.min(1, dt * 6); R.wing.position.y = R.wing.userData.stowY + (R.wing.userData.upY - R.wing.userData.stowY) * R.wingK; R.wing.position.z = R.wing.userData.stowZ + (R.wing.userData.upZ - R.wing.userData.stowZ) * R.wingK; R.wing.rotation.x = -0.12 * R.wingK;
+    // v8 look: cones / mist / wire / haze follow the paint + the quality tier (wire 0 = off, 1 = static thin lines, 2 = animated scan)
+    var tr8 = quality.tier || RRGov.TIERS[1], pilot = R.paintName === 'pilot', gnd = 0.045 + (g.ground - y);
+    coneG.visible = pilot && tr8.cones && !flying && tk < 0.5; mistG.visible = coneG.visible; coneG.position.y = gnd; mistG.position.y = gnd + 0.08;
+    var cOp = R.inShow ? 0.55 : 0.2; coneMats[0].uniforms.op.value = coneMats[1].uniforms.op.value = cOp; mistMat.uniforms.op.value = R.inShow ? 0.34 : 0.16; mistMat.uniforms.t.value = clock * (0.6 + g.speed * 0.05);
+    tailHaze.visible = pilot; tailGlow.scale.set(pilot ? 2.9 : 2.3, pilot ? 0.34 : 0.16, 1); tailHaze.material.opacity = (R.inShow ? 0.34 : 0.22) + Math.sin(clock * 2.2) * 0.02;
+    var wr = R.carGroup.userData.wire; wr.visible = pilot && tr8.wire > 0 && R.wireOn !== false; RRCar.WIRE.t.value = clock; RRCar.WIRE.k.value = R.inShow ? 1.0 : 0.42; RRCar.WIRE.scan.value = tr8.wire >= 2 ? (R.inShow ? 1 : 0.5) : 0;
     // thrusters: rear glow + plumes during rocket flight
     var thrust = flying ? 0.75 + 0.25 * Math.min(1, (g.surgeA || 0) / 6) : 0; R.thrust = (R.thrust || 0) + (thrust - (R.thrust || 0)) * Math.min(1, dt * 8);
     for (i = 0; i < 4; i++) { nozzleGlow[i].material.opacity = R.thrust * (0.8 + Math.random() * 0.2); nozzleGlow[i].scale.setScalar(0.5 + R.thrust * 0.6); plumes[i].material.uniforms.opacity.value = R.thrust * 0.9; plumes[i].material.uniforms.t.value = clock; plumes[i].scale.set(1, 1, 0.6 + R.thrust * (1.4 + Math.random() * 0.4)); }
     if (flying) { for (i = 0; i < 3; i++) partsSpark.emit(x + (Math.random() - 0.5) * 1.2, y + 0.3, z + 3.3, (Math.random() - 0.5), (Math.random() - 0.5), 12 + Math.random() * 6, 0.6, 0.9, 1, 0.35, 0.35); }
     lightBarGlow.material.opacity = 0.2 + Math.sin(clock * 4) * 0.04;
-    shieldMesh.visible = g.shieldT > 0 || g.invulnT > 0.9; shieldMesh.material.uniforms.t.value = clock; shieldMesh.material.uniforms.a.value = g.shieldT > 0 ? (g.shieldT < 3 ? 0.5 + 0.5 * Math.sin(clock * 20) : 1) : 0.5;
-    var paint = car.userData.paint; paint.emissive.setScalar(g.invulnT > 0 && g.shieldT <= 0 && Math.sin(clock * 30) > 0 ? 0.35 : 0);
+    // v8 blink fix: the invulnerability / shield feedback is EASED (it used to hard-toggle the whole body's emissive at ~4.8 Hz and pop the bubble in/out as invulnT crossed 0.9 - after every landing, shield pop, stumble: the 'it randomly blinks every few moments' bug)
+    var shT = g.shieldT > 0 ? (g.shieldT < 3 ? 0.65 + 0.35 * Math.sin(clock * 8) : 1) : (g.invulnT > 0.9 ? 0.5 : 0), ke = Math.min(1, dt * 9);
+    R.shA = (R.shA || 0) + (shT - (R.shA || 0)) * ke; shieldMesh.visible = R.shA > 0.02; shieldMesh.material.uniforms.t.value = clock; shieldMesh.material.uniforms.a.value = R.shA;
+    R.invA = (R.invA || 0) + ((g.invulnT > 0 && g.shieldT <= 0 ? 1 : 0) - (R.invA || 0)) * ke;
+    var paint = car.userData.paint; paint.emissive.setScalar(R.invA * (0.09 + 0.05 * Math.sin(clock * 7)));
     // drone chaser
     var dz = z + 3.4 + (1 - g.chase) * 12, dy = 2.9 + Math.sin(clock * 3) * 0.2;
     if (g.state === 'over' && g.reason === 'caught') { dz = z + 2.5; dy = y + 2.2; }
@@ -5494,15 +5714,17 @@ var RRRender = (function () {
     droneProps[0].rotation.y += dt * 30; droneProps[1].rotation.y -= dt * 30;
     // road & rails follow the car; texture scrolls
     // v7: the road, rails and arches stop at the tunnel mouth (the first tube segment); a plain road is exactly as before (length 360 from gz-40)
-    var tubeOn = g.tubePending || inTube, mouthZ = tubeOn ? Math.ceil(g.tubeEntryZ / TSEG) * TSEG : 1e12;
-    var rNear = gz - 40, rFar = Math.min(gz + 320, mouthZ), rLen = rFar - rNear, rOn = rLen > 1 && !(inTube && rNear > mouthZ);
+    // v8: the tunnel has an end too: tube segments run from the mouth to endZ (the exit is announced inside the tunnel), the road resumes at endZ
+    var tubeOn = g.tubePending || inTube, mouthZ = tubeOn ? Math.ceil(g.tubeEntryZ / TSEG) * TSEG : 1e12, endZ = inTube && g.exitPending ? Math.floor(g.tubeExitZ / TSEG) * TSEG : 1e12;
+    var rNear = gz - 40, rFar = Math.min(gz + 320, mouthZ); if (inTube) { rNear = Math.max(rNear, endZ); rFar = gz + 320; }
+    var rLen = rFar - rNear, rOn = rLen > 1;
     road.visible = rOn; if (rOn) { road.scale.y = rLen / 360; road.position.set(0, 0, -(rNear + rLen / 2)); roadTex.repeat.set(1, rLen / 12); roadTex.offset.y = (rNear / 12) % 1; }
     for (i = 0; i < rails.length; i++) { rails[i].visible = rOn; if (rOn) { rails[i].scale.z = rLen / 360; rails[i].position.z = -(rNear + rLen / 2); } }
     R.sky.position.set(x, 0, z); R.stars.position.set(x, 0, z); R.planet.position.set(-220, 180, z - 700); R.ring.position.copy(R.planet.position);
     // sun & shadow box follow the car
     R.sun.position.set(bx0 - 6 * cT - 14 * sT, by0 - 6 * sT + 14 * cT, z + 4); R.sun.target.position.set(bx0, by0, z - 6);
-    drawSetPieces(g, z, x, y, dt, app, tubeOn ? mouthZ : 1e12); placeTerrain(x, y, z); drawTube(g, gz, mouthZ, tubeOn);
-    var a0 = Math.floor(gz / 45); for (i = 0; i < 8; i++) { var az = (a0 + i) * 45 + 20, azm = ((az % CY) + CY) % CY, hideA = (y > 3 && az < gz + 6) || (azm >= Z_TUN - 10 && azm < Z_PORT + 10) || az > mouthZ - 4; dummy.position.set(0, hideA ? -50 : 0.3, -az); dummy.rotation.set(0, 0, 0); dummy.scale.set(1, 1.35, 1); dummy.updateMatrix(); arches.setMatrixAt((((a0 + i) % 8) + 8) % 8, dummy.matrix); } /* v4 fix: slot = arch index mod 8, so each arch keeps its colour (v3 re-used slot i, and every arch swapped pink/cyan each 45 m: a full-screen colour pop) */ arches.instanceMatrix.needsUpdate = true; arches.count = 8;
+    drawSetPieces(g, z, x, y, dt, app, tubeOn ? mouthZ : 1e12, endZ); placeTerrain(x, y, z); drawTube(g, gz, mouthZ, endZ, tubeOn);
+    var a0 = Math.floor(gz / 45); for (i = 0; i < 8; i++) { var az = (a0 + i) * 45 + 20, azm = ((az % CY) + CY) % CY, hideA = (y > 3 && az < gz + 6) || (azm >= Z_TUN - 10 && azm < Z_PORT + 10) || (az > mouthZ - 4 && az < endZ); dummy.position.set(0, hideA ? -50 : 0.3, -az); dummy.rotation.set(0, 0, 0); dummy.scale.set(1, 1.35, 1); dummy.updateMatrix(); arches.setMatrixAt((((a0 + i) % 8) + 8) % 8, dummy.matrix); } /* v4 fix: slot = arch index mod 8, so each arch keeps its colour (v3 re-used slot i, and every arch swapped pink/cyan each 45 m: a full-screen colour pop) */ arches.instanceMatrix.needsUpdate = true; arches.count = 8;
     // obstacles
     var nB = 0, nBr = 0, nH = 0, nS = 0, nR = 0, nHL = 0, nG = 0, near = g.z - 30, far = g.z + C.VIEW + 10, NBc = I.barrier.instanceMatrix.count, NHc = I.hauler.instanceMatrix.count;
     for (i = 0; i < g.obs.length; i++) {
@@ -5567,7 +5789,7 @@ var RRRender = (function () {
     } else R.crashBase = null;
     var cb = R.cf ? R.cf.back * (app.reducedMotion ? 0.3 : 1) : 0, cu = R.cf ? R.cf.up * (app.reducedMotion ? 0.3 : 1) : 0; /* v4: eased pull-back, no random shake */
     // v7: the chase camera rides the same circle as the car (th); its roll lags a little for a smooth 'gravity flip'. Reduced motion: far less roll (35%) and a quicker settle.
-    var phiT = th * (app.reducedMotion ? 0.35 : 1); R.camPhi = R.camPhi == null ? phiT : R.camPhi + (phiT - R.camPhi) * Math.min(1, dt * (app.reducedMotion ? 12 : 7)); if (!inTube && Math.abs(R.camPhi) < 1e-4) R.camPhi = 0;
+    if (!inTube && R.camPhi) R.camPhi -= Math.round(R.camPhi / 6.283185307179586) * 6.283185307179586; /* v8: leaving a tunnel after a full revolution (tslot -8 == the floor) must not unwind the camera 360 degrees */ var phiT = th * (app.reducedMotion ? 0.35 : 1); R.camPhi = R.camPhi == null ? phiT : R.camPhi + (phiT - R.camPhi) * Math.min(1, dt * (app.reducedMotion ? 12 : 7)); if (!inTube && Math.abs(R.camPhi) < 1e-4) R.camPhi = 0;
     var cph = R.camPhi, sP = Math.sin(cph), cP = Math.cos(cph), lat = R.camX + wb.sway * wk, camH = R.camY + cu - (inTube ? 0.9 * tk : 0), lkH = Math.max(0, y * 0.6) + 1.1;
     camera.up.set(-sP, cP, 0);
     camera.position.set(tX(cph, camH) + lat * cP, tY(cph, camH) + lat * sP, z + back + cb);
@@ -5578,15 +5800,70 @@ var RRRender = (function () {
     if (Math.abs(camera.fov - fov) > 0.01) { camera.fov = fov; camera.updateProjectionMatrix(); }
     post.u.speed = app.reducedMotion ? 0 : Math.min(1, Math.max(0, (g.speed - 24) / 9) * 0.5 + R.thrust * 0.8 + R.kick * 0.05);
     post.u.bloom = 0.6 + (R.launching ? 0.25 : 0) + R.wT * 0.2;
-    if (R.studioOn) { car.position.set(0, 0, 0); carBody.rotation.set(0, 0, 0); carBody.scale.set(1, 1, 1); var so = R.studioOn; camera.position.set(so.cam[0], so.cam[1], so.cam[2]); camera.lookAt(so.look[0], so.look[1], so.look[2]); if (so.fov) camera.fov = so.fov; camera.updateProjectionMatrix(); R.blob.visible = true; post.u.speed = 0; if (so.wing != null) { R.wing.position.z = R.wing.userData.stowZ + (R.wing.userData.upZ - R.wing.userData.stowZ) * so.wing; R.wing.position.y = R.wing.userData.stowY + (R.wing.userData.upY - R.wing.userData.stowY) * so.wing; R.wing.rotation.x = -0.12 * so.wing; } post.render(R.studioScene, camera); return; }
+    if (R.studioOn) { car.position.set(0, 0, 0); carBody.rotation.set(0, 0, 0); carBody.scale.set(1, 1, 1); var so = R.studioOn; camera.position.set(so.cam[0], so.cam[1], so.cam[2]); camera.lookAt(so.look[0], so.look[1], so.look[2]); if (so.fov) camera.fov = so.fov; camera.clearViewOffset(); camera.updateProjectionMatrix(); R.blob.visible = true; post.u.speed = 0; if (so.wing != null) { R.wing.position.z = R.wing.userData.stowZ + (R.wing.userData.upZ - R.wing.userData.stowZ) * so.wing; R.wing.position.y = R.wing.userData.stowY + (R.wing.userData.upY - R.wing.userData.stowY) * so.wing; R.wing.rotation.x = -0.12 * so.wing; } post.render(R.studioScene, camera); return; }
+    if (app.screen === 'title' && !R.studioOn) { R.drawShow(dt, app); return; }
+    if (R.inShow) { R.inShow = false; scene.add(car); camera.clearViewOffset(); camera.updateProjectionMatrix(); }
     post.render(scene, camera);
   };
+  // ---------- v8: "Home" showcase (title screen): the car alone on a black floor with a perspective dot grid, slow orbit between three camera presets ----------
+  var SHOW_P = [ // az (deg from the tail, toward +x), el (deg), distance (m), vertical fov, look-at y
+    { az: 32, el: 15, r: 8.0, fov: 36, ly: 0.62, lz: 0.1 },   // rear 3/4, high
+    { az: 90, el: 3, r: 11.5, fov: 24, ly: 0.62, lz: 0 },     // side profile (long lens)
+    { az: 214, el: 3.5, r: 7.0, fov: 44, ly: 0.56, lz: 0 }    // low, wide front 3/4
+  ], SHOW_HOLD = 5.2, SHOW_MOVE = 1.9;
+  R.SHOW_ANCHORS = [ // car-local anchors for the kid-friendly callouts; 'on' lists the presets where each one shows
+    { id: 'wing', label: 'WING', opts: ['DOWN', 'UP'], p: [0.62, 1.06, 2.02], on: [0, 1] },
+    { id: 'jets', label: 'JETS', opts: ['4 JETS'], p: [0.375, 0.4, 2.25], on: [0] },
+    { id: 'tail', label: 'TAIL', opts: ['LIGHTS'], p: [-0.7, 0.8, 2.2], on: [0] },
+    { id: 'wheels', label: 'WHEELS', opts: ['ROLL'], p: [0.93, 0.36, -0.97], on: [1] },
+    { id: 'nose', label: 'LIGHTS', opts: ['ON'], p: [0.0, 0.52, -2.26], on: [2] },
+    { id: 'wheels2', label: 'WHEELS', opts: ['ROLL'], p: [-0.93, 0.36, -0.97], on: [] }
+  ];
+  function softboxEnv() {
+    var es = new T.Scene(), pm = new T.PMREMGenerator(renderer);
+    es.add(new T.Mesh(new T.SphereGeometry(10, 32, 16), new T.ShaderMaterial({ side: T.BackSide, vertexShader: 'varying vec3 v;void main(){v=normalize(position);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
+      fragmentShader: 'varying vec3 v;void main(){float h=v.y;float top=smoothstep(0.7,0.92,h)*smoothstep(0.7,0.15,abs(v.x));float strip=smoothstep(0.1,0.0,abs(v.y-0.32))*smoothstep(0.1,0.0,abs(abs(v.x)-0.85))*1.0;float back=smoothstep(0.15,0.0,abs(v.z+0.9))*smoothstep(0.4,0.0,abs(v.y-0.2));vec3 c=vec3(0.015)+vec3(0.12)*smoothstep(-0.1,0.9,h)+vec3(1.8)*top+vec3(1.5)*strip+vec3(1.4)*back;gl_FragColor=vec4(c,1.);}' })));
+    var t = pm.fromScene(es, 0.03).texture; pm.dispose(); return t;
+  }
+  function buildShow() {
+    var st = new T.Scene(); st.background = new T.Color(0x010101); st.environment = softboxEnv(); st.environmentIntensity = 0.8;
+    var fl = new T.Mesh(new T.PlaneGeometry(90, 90), new T.ShaderMaterial({ transparent: false, uniforms: { t: { value: 0 } }, vertexShader: 'varying vec3 w;void main(){vec4 p=modelMatrix*vec4(position,1.);w=p.xyz;gl_Position=projectionMatrix*viewMatrix*p;}',
+      fragmentShader: 'varying vec3 w;void main(){float cell=0.55;vec2 q=w.xz/cell;vec2 f=fract(q)-0.5;float r=length(f);float d=length(w.xz);float aa=fwidth(r)*1.2;float rad=0.028;float a=1.-smoothstep(rad-aa,rad+aa,r);float fade=exp(-d*0.09)*0.8;float c=a*fade*(0.75+0.25*smoothstep(0.,6.,d));gl_FragColor=vec4(vec3(0.82,0.84,0.9)*c+vec3(0.004),1.);}' })); fl.rotation.x = -Math.PI / 2; st.add(fl);
+    var key = new T.DirectionalLight(0xffffff, 1.6); key.position.set(-4, 9, 5); st.add(key); var kb = new T.DirectionalLight(0xdfe8ff, 0.7); kb.position.set(6, 3, -7); st.add(kb); st.add(new T.HemisphereLight(0x8a90a0, 0x050506, 0.25));
+    R.showScene = st; R.showT = 0; R.showFreeze = null; R.showWing = 0;
+  }
+  function ease(k) { k = Math.max(0, Math.min(1, k)); return k * k * (3 - 2 * k); }
+  R.drawShow = function (dt, app) {
+    if (!R.inShow) { R.inShow = true; R.showScene.add(car); R.showT = 0; }
+    var red = app.reducedMotion, P = SHOW_P, n = P.length, cyc = SHOW_HOLD + SHOW_MOVE, idx, loc, from, to, k = 0, settled;
+    R.showT += dt > 0 ? dt : 0; if (!(R.showT >= 0)) R.showT = 0;
+    if (R.showFreeze != null) { idx = R.showFreeze; loc = SHOW_HOLD * 0.5 + 2.5; } else { var tt = R.showT % (cyc * n); idx = Math.floor(tt / cyc); loc = tt - idx * cyc; }
+    settled = loc < SHOW_HOLD; from = P[idx]; to = P[(idx + 1) % n];
+    var az0 = from.az, az1 = to.az + (idx + 1 >= n ? 360 : 0);
+    if (!settled) k = ease((loc - SHOW_HOLD) / (red ? 0.12 : SHOW_MOVE)); if (red && !settled && loc - SHOW_HOLD > 0.12) { k = 1; }
+    var drift = red || !settled ? 0 : Math.sin(R.showT * 0.5) * 2.2, az = (az0 + (az1 - az0) * k + drift) * Math.PI / 180, el = (from.el + (to.el - from.el) * k) * Math.PI / 180;
+    var asp = camera.aspect, fit = asp < 1.3 ? Math.min(2.3, Math.pow(1.3 / asp, 0.85)) : 1, rr = (from.r + (to.r - from.r) * k) * fit, fv = from.fov + (to.fov - from.fov) * k, ly = from.ly + (to.ly - from.ly) * k, lz = from.lz + (to.lz - from.lz) * k;
+    R.showIdx = settled ? idx : -1; R.showLoc = loc; R.showK = k;
+    car.position.set(0, 0, 0); car.rotation.set(0, 0, 0); carBody.rotation.set(0, 0, 0); carBody.scale.set(1, 1, 1); carBody.position.set(0, 0, 0);
+    // wing: stowed -> deploys when the rear view settles, stows again in the front view
+    var wt = idx === 0 ? (loc > 1.3 ? 1 : 0) : idx === 1 ? (loc < 3.6 ? 1 : 0) : 0; if (!settled && idx === 1) wt = 0; if (!settled && idx === 2) wt = 0;
+    R.showWing += (wt - R.showWing) * (red ? 1 : Math.min(1, dt * 3.2)); R.wingK = R.showWing; var wk = R.showWing, W = R.wing;
+    W.position.y = W.userData.stowY + (W.userData.upY - W.userData.stowY) * wk; W.position.z = W.userData.stowZ + (W.userData.upZ - W.userData.stowZ) * wk; W.rotation.x = -0.12 * wk;
+    camera.up.set(0, 1, 0); camera.position.set(Math.sin(az) * Math.cos(el) * rr, ly + Math.sin(el) * rr, lz + Math.cos(az) * Math.cos(el) * rr); camera.fov = fv; var shW = window.innerWidth, shH = window.innerHeight; if (asp > 1.3) camera.setViewOffset(shW, shH, -shW * 0.13, 0, shW, shH); else camera.clearViewOffset(); camera.updateProjectionMatrix(); camera.lookAt(0, ly, lz);
+    R.blob.visible = true; post.u.speed = 0; post.u.bloom = 0.95; for (var i = 0; i < wheels.length; i++) wheels[i].rotation.x -= dt * 0.8;
+    for (i = 0; i < 4; i++) { nozzleGlow[i].material.opacity = 0; plumes[i].material.uniforms.opacity.value = 0; }
+    shieldMesh.visible = false; R.shA = 0; R.invA = 0; drone.visible = false;
+    post.render(R.showScene, camera);
+  };
+  R.setPaint = function (name) { RRCar.setPaint(R.carGroup, name); R.paintName = name; scene.environmentIntensity = 1; if (R.showScene) R.showScene.environmentIntensity = name === 'pilot' ? 0.5 : 0.55; return name; };
+  R.setWire = function (on) { R.wireOn = on; };
   R.info = function () { var i = renderer.info, archLow = 0, m = new T.Matrix4(), v = new T.Vector3(); for (var k = 0; k < arches.count; k++) { arches.getMatrixAt(k, m); v.setFromMatrixPosition(m); if (v.y > -1 && v.z > car.position.z - 2) archLow++; } return { mode: R.tubeK > 0 ? 'tube' : 'road', tubeK: R.tubeK || 0, camPhi: R.camPhi || 0, carTheta: R.th || 0, obsDrawn: I.barrier.count + I.bar.count + I.hauler.count + I.tgate.count, drawn: { barrier: I.barrier.count, bar: I.bar.count, hauler: I.hauler.count, tgate: I.tgate.count, coin: I.coin.count, tshell: I.tshell.count, trib: I.trib.count, tlamp: I.tlamp.count }, gl2: R.gl2, gpu: R.gpuInfo, timer: !!R.timerExt, tier: quality.tier ? quality.tier.name : '', dpr: quality.dpr, scale: quality.scale, shadow: quality.shadow, warmMs: R.warmMs, programs: renderer.info.programs ? renderer.info.programs.length : 0, fov: camera.fov, baseFov: R.baseFov, kick: R.kick, biome: R.biome(-car.position.z), wT: R.wT, wP: R.wP, wS: R.wS, launching: !!R.launching, tunnelSegs: I.tunnel.count, streaks: I.streak.count, streakOpacity: I.streak.material.opacity, postSpeed: post.u.speed, bufW: post.W, bufH: post.H, msaa: post.msaa, droneVisible: drone.visible, archesBehindCar: archLow, carY: car.position.y, plumeOpacity: plumes[0].material.uniforms.opacity.value, camY: camera.position.y, calls: i.render.calls, tris: i.render.triangles, geos: i.memory.geometries, tex: i.memory.textures, smoke: partsSmoke.alive(), spark: partsSpark.alive() }; };
   R.carScreenBox = function () { var bb = new T.Box3().setFromObject(R.bodyMesh), out = { minX: 1e9, minY: 1e9, maxX: -1e9, maxY: -1e9 }, v = new T.Vector3(), W = window.innerWidth, H = window.innerHeight;
     for (var c = 0; c < 8; c++) { v.set(c & 1 ? bb.max.x : bb.min.x, c & 2 ? bb.max.y : bb.min.y, c & 4 ? bb.max.z : bb.min.z).project(camera); var sx = (v.x + 1) / 2 * W, sy = (1 - v.y) / 2 * H; out.minX = Math.min(out.minX, sx); out.maxX = Math.max(out.maxX, sx); out.minY = Math.min(out.minY, sy); out.maxY = Math.max(out.maxY, sy); }
     return out; };
   R.renderer = function () { return renderer; };
   // clarity probe (VALORANT-style "the hero must always read against the world"): luminance contrast of the car vs its surroundings
+  R.carFx = function () { return { emis: car.userData.paint.emissive.r, shield: shieldMesh.visible ? 1 : 0, sa: shieldMesh.material.uniforms.a.value, carVis: car.visible ? 1 : 0 }; }; // test hook: the per-frame invuln/shield feedback state (blink regression)
   R.carContrast = function () {
     post.render(scene, camera); var gl = renderer.getContext(), W = gl.drawingBufferWidth, H = gl.drawingBufferHeight, buf = new Uint8Array(W * H * 4); gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, buf);
     var b = R.carScreenBox(), sx = W / window.innerWidth, sy = H / window.innerHeight, bw = b.maxX - b.minX, bh = b.maxY - b.minY;
@@ -5601,9 +5878,9 @@ var RRRender = (function () {
       var es = new T.Scene(), pm = new T.PMREMGenerator(renderer); es.add(new T.Mesh(new T.SphereGeometry(10, 32, 16), new T.ShaderMaterial({ side: T.BackSide, vertexShader: 'varying vec3 v;void main(){v=normalize(position);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}', fragmentShader: 'varying vec3 v;void main(){float h=v.y;float box=smoothstep(0.75,0.95,h)*smoothstep(0.6,0.2,abs(v.x));vec3 c=vec3(0.03)+vec3(0.35)*smoothstep(-0.1,0.9,h)+vec3(2.2)*box;gl_FragColor=vec4(c,1.);}' })));
       st.environment = pm.fromScene(es, 0.03).texture; st.environmentIntensity = 0.8; pm.dispose(); var fl = new T.Mesh(new T.PlaneGeometry(60, 60), new T.MeshStandardMaterial({ color: 0x1a1a1d, roughness: 0.7 })); fl.rotation.x = -Math.PI / 2; fl.receiveShadow = true; st.add(fl);
       var key = new T.SpotLight(0xffffff, 32, 40, 0.55, 0.7, 1.2); key.position.set(0, 9, 6); key.target.position.set(0, 0, 0); key.castShadow = true; key.shadow.mapSize.set(1024, 1024); st.add(key); st.add(key.target); st.add(new T.HemisphereLight(0x9aa0b0, 0x101012, 0.2)); R.studioScene = st; }
-    if (o) { R.studioOn = o; R.studioScene.add(car); } else { R.studioOn = null; scene.add(car); }
+    if (o) { R.studioOn = o; R.studioScene.add(car); } else { R.studioOn = null; R.inShow = false; scene.add(car); }
   };
-  R.project = function (x, y, z) { var v = new T.Vector3(x, y, z).project(camera); return [(v.x + 1) / 2 * window.innerWidth, (1 - v.y) / 2 * window.innerHeight]; };
+  var PV = new T.Vector3(); R.project = function (x, y, z) { var v = PV.set(x, y, z).project(camera); return [(v.x + 1) / 2 * window.innerWidth, (1 - v.y) / 2 * window.innerHeight]; };
   R.carHalfWidth = function () { var bb = new T.Box3(); R.bodyMesh.geometry.computeBoundingBox(); bb.copy(R.bodyMesh.geometry.boundingBox); return { hw: (bb.max.x - bb.min.x) / 2, len: bb.max.z - bb.min.z, h: bb.max.y }; };
   R.carDrawables = function () { var n = 0; car.traverse(function (o) { if (o.isMesh || o.isSprite) n++; }); return n; };
   R.carDraws = function () { var n = 0; car.traverse(function (o) { if (o.isSprite) n++; else if (o.isMesh) n += Array.isArray(o.material) ? o.geometry.groups.length : 1; }); return n; }; // draw calls for the car (no shadow pass)
@@ -5620,7 +5897,7 @@ var RRRender = (function () {
   return R;
 })();
 
-/* Roadster Rush v7 (app shell from v2-v6; v7 adds Tube Run HUD + debug hooks; audio unchanged from v6) — app shell: screens, input, 120 Hz fixed-step loop + interpolation, hit-stop, haptics, adaptive governor, GPU timer, perf overlay, teach-by-play prompts, threat warnings, test hooks. */
+/* Roadster Rush v8 (app shell from v2-v7; v8 adds the cockpit HUD/title, paint choice and showcase callouts; gameplay, Tube Run and audio unchanged from v7) — app shell: screens, input, 120 Hz fixed-step loop + interpolation, hit-stop, haptics, adaptive governor, GPU timer, perf overlay, teach-by-play prompts, threat warnings, test hooks. */
 (function () {
   var L = RRLogic, $ = function (id) { return document.getElementById(id); };
   var ICON = {
@@ -5649,6 +5926,11 @@ var RRRender = (function () {
   };
   function icons(root) { var els = (root || document).querySelectorAll('[class*="ic-"]'); for (var i = 0; i < els.length; i++) { var m = /ic-(\w+)/.exec(els[i].className); if (m && ICON[m[1]] && !els[i].firstChild) els[i].innerHTML = ICON[m[1]]; } }
   icons();
+  // v8 cockpit digits/labels: original squared stroke font (src/font.js), hollow digits in slots (only changed slots touch the DOM)
+  [['score', 4, 30], ['coins', 3, 24], ['best', 4, 24], ['finalScore', 5, 60], ['finalCoins', 3, 24], ['finalBest', 4, 24], ['spd', 3, 44]].forEach(function (d) { RRFont.mount(document.getElementById(d[0]), d[1], d[2]); });
+  function setN(id, v) { RRFont.num($(id), v); }
+  document.getElementById('logo').innerHTML = RRFont.text('Roadster', { h: 34, sw: 0.7 }) + '<div style="height:8px"></div>' + RRFont.text('Rush', { h: 34, sw: 0.7 }) + '<small class="cap">Select \u00b7 Play</small>';
+  document.getElementById('pausedCap').innerHTML = RRFont.text('Paused', { h: 22, sw: 0.6, color: '#ff1a1a' });
   // storage with fallback (private mode / blocked storage / corrupt values)
   var mem = {}, storeOk = true;
   function sget(k) { try { var v = window.localStorage.getItem(k); return v == null ? mem[k] : v; } catch (e) { storeOk = false; return mem[k]; } }
@@ -5660,6 +5942,7 @@ var RRRender = (function () {
   // adaptive governor: DPR up to 3 with dynamic resolution, aiming at ~80% of the detected refresh budget (see REQUIREMENTS.md)
   var gov = RRGov.create({ dpr: window.devicePixelRatio || 1, maxDpr: 3, target: 0.8 });
   var mt = /tier=(\d)/.exec(location.hash); var ms = /[#&]s=([\d.]+)/.exec(location.hash); if (mt) { gov.tier = Math.min(4, +mt[1]); gov.scale = ms ? Math.max(0.3, Math.min(1, +ms[1])) : 1; app.lockQuality = true; }
+  var paintPref = sget('rrush.paint') === 'pilot' ? 'pilot' : 'ano'; RRRender.setPaint(paintPref);
   RRRender.applyGov(gov); RRRender.warm();
   RRAudio.setMuted(app.muted);
   function setMuteIcons() { ['mutebtn', 'mutebtn2'].forEach(function (id) { var b = $(id); b.innerHTML = app.muted ? ICON.mute : ICON.sound; b.setAttribute('aria-pressed', app.muted ? 'true' : 'false'); }); }
@@ -5677,8 +5960,9 @@ var RRRender = (function () {
     RRAudio.gesture(tog);
   }
   ['pointerdown', 'pointerup', 'touchstart', 'touchend', 'click', 'keydown'].forEach(function (t) { window.addEventListener(t, unlock, true); });
-  $('best').textContent = app.best;
-  function show(id) { ['title', 'paused', 'over'].forEach(function (s) { $(s).classList.toggle('hidden', s !== id); }); $('hud').classList.toggle('hidden', !(app.screen === 'play')); }
+  setN('best', app.best);
+  function setGear(g) { ['gearT', 'gearH'].forEach(function (id) { var bs = $(id).children; for (var i = 0; i < bs.length; i++) bs[i].classList.toggle('on', bs[i].textContent === g); }); }
+  function show(id) { setGear(id === 'paused' ? 'P' : id === 'over' ? 'R' : id === 'title' ? 'N' : 'D'); $('callouts').classList.toggle('hidden', id !== 'title');  ['title', 'paused', 'over'].forEach(function (s) { $(s).classList.toggle('hidden', s !== id); }); $('hud').classList.toggle('hidden', !(app.screen === 'play')); }
   function startRun(seed) {
     // v6: explicit gesture unlock in this tap turn (Play), then SFX; music starts via wanted() once ctx is running
     RRAudio.gesture(false); RRAudio.ensureRunning(); RRAudio.play('tap');
@@ -5691,12 +5975,12 @@ var RRRender = (function () {
   }
   function pause() { if (app.screen !== 'play' || app.paused) return; RRAudio.engine(false, 0, 0); app.paused = true; show('paused'); $('hud').classList.remove('hidden'); RRAudio.music(false); }
   function resume() { if (!app.paused) return; RRAudio.gesture(false); RRAudio.ensureRunning(); RRAudio.play('tap'); app.paused = false; show(null); $('hud').classList.remove('hidden'); RRAudio.music(true); last = performance.now(); }
-  function home() { RRAudio.play('tap'); RRAudio.engine(false, 0, 0); app.screen = 'title'; app.paused = false; game.reset(game.seed + 1); show('title'); $('hud').classList.add('hidden'); $('hint').classList.add('hidden'); $('best').textContent = app.best; RRAudio.music(false); }
+  function home() { if (window.__rrReload) { location.reload(); return; } RRAudio.play('tap'); RRAudio.engine(false, 0, 0); app.screen = 'title'; app.paused = false; game.reset(game.seed + 1); show('title'); $('hud').classList.add('hidden'); $('hint').classList.add('hidden'); setN('best', app.best); RRAudio.music(false); }
   function gameOver() {
     app.screen = 'over'; app.overT = 0; app.overAt = performance.now(); app.crashT = 0; RRAudio.music(false); RRAudio.engine(false, 0, 0);
     var s = Math.floor(game.score);
     app.newBest = s > app.best; if (app.newBest) { app.best = s; sset('rrush.best', s); }
-    $('finalScore').textContent = s; $('finalCoins').textContent = game.coins; $('finalBest').textContent = app.best; $('newbest').classList.toggle('hidden', !app.newBest);
+    setN('finalScore', s); setN('finalCoins', game.coins); setN('finalBest', app.best); $('newbest').classList.toggle('hidden', !app.newBest);
     $('hint').classList.add('hidden');
     app.overShown = false; /* v4: the card fades in when the crash curve finishes (see frame), not on a timer cut */
   }
@@ -5715,7 +5999,7 @@ var RRRender = (function () {
   $('paused').addEventListener('pointerdown', function (e) { if (e.target === $('paused')) resume(); });
   // gameplay input: swipes (commit mid-gesture, 26px), plus tap zones for small kids: left third / right third = lane, middle = jump
   var ptr = null, inputs = { swipes: 0, taps: 0, keys: 0, last: null };
-  function act(a, src) { if (app.screen !== 'play' || app.paused) return; if (game.mode === 'tube' && (a === 'up' || a === 'down')) { inputs.ignored = (inputs.ignored || 0) + 1; return; } /* v7: no jump or slide in the tube */ inputs.last = a; inputs[src]++; game.input(a); if (app.hintT > 0 && app.hintT < 3.5) { app.hintT = 0; $('hint').classList.add('hidden'); } }
+  function act(a, src) { if (app.screen !== 'play' || app.paused) return; if (game.mode === 'tube' && (a === 'up' || a === 'down') && !game.tubeTall) { inputs.ignored = (inputs.ignored || 0) + 1; return; } /* v7: no jump or slide in the tube; v8: in the tall hybrid tunnel (50k+) 'up' hops */ inputs.last = a; inputs[src]++; game.input(a); if (app.hintT > 0 && app.hintT < 3.5) { app.hintT = 0; $('hint').classList.add('hidden'); } }
   window.addEventListener('pointerdown', function (e) { if (app.screen !== 'play' || app.paused) return; if (e.target.closest && e.target.closest('button')) return; ptr = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now(), done: false }; });
   function onMove(e) {
     if (!ptr || ptr.id !== e.pointerId || ptr.done) return;
@@ -5746,13 +6030,41 @@ var RRRender = (function () {
   window.addEventListener('resize', function () { RRRender.resize(); });
   window.addEventListener('orientationchange', function () { setTimeout(RRRender.resize, 200); });
   document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+  // v8 paint choice (Ano White default, Pilot Black optional), saved as 'rrush.paint' only
+  function setPaintUI(n, tap) {
+    n = n === 'pilot' ? 'pilot' : 'ano'; RRRender.setPaint(n); sset('rrush.paint', n); if (tap) RRAudio.play('tap');
+    [['paintAno', 'ano'], ['paintPilot', 'pilot']].forEach(function (p) { var b = $(p[0]), on = p[1] === n; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+  }
+  setPaintUI(paintPref, false);
+  $('paintAno').addEventListener('click', function () { setPaintUI('ano', true); });
+  $('paintPilot').addEventListener('click', function () { setPaintUI('pilot', true); });
+  // v8 title callouts: red diamond hotspots with a leader line and a small kid-friendly label, tracking car-local anchors through the showcase camera
+  var coEls = RRRender.SHOW_ANCHORS.map(function (an) {
+    var d = document.createElement('div'); d.className = 'co'; d.setAttribute('data-id', an.id); d.innerHTML = '<i class="dm"></i><b class="ln"></b><span class="lb"><em>' + an.label + '</em><u></u></span>'; $('callouts').appendChild(d);
+    return { el: d, u: d.lastChild.lastChild, an: an, shown: false, txt: '', left: false };
+  });
+  function callouts() {
+    var idx = RRRender.showIdx;
+    for (var i = 0; i < coEls.length; i++) {
+      var c = coEls[i], on = idx >= 0 && c.an.on.indexOf(idx) >= 0;
+      if (on !== c.shown) { c.shown = on; c.el.classList.toggle('on', on); }
+      if (!on) continue;
+      var pt = RRRender.project(c.an.p[0], c.an.p[1], c.an.p[2]); if (!(pt[0] > 0)) continue;
+      var lf = pt[0] > window.innerWidth * 0.58; if (lf !== c.left) { c.left = lf; c.el.classList.toggle('left', lf); }
+      c.el.style.transform = 'translate(' + pt[0].toFixed(1) + 'px,' + pt[1].toFixed(1) + 'px)';
+      var o = c.an.opts, tx = o.length > 1 ? (RRRender.showWing > 0.5 ? o[1] : o[0]) : o[0]; if (tx !== c.txt) { c.txt = tx; c.u.textContent = tx; }
+    }
+  }
   // HUD
   var powEls = {}, POW = [['rocket', 'rocketT', L.C.ROCKET_T], ['magnet', 'magnetT', L.C.MAGNET_T], ['x2', 'x2T', L.C.X2_T], ['shield', 'shieldT', L.C.SHIELD_T]];
   POW.forEach(function (p) { var d = document.createElement('div'); d.className = 'pw hidden'; d.innerHTML = ICON[p[0]] + '<i></i>'; $('pows').appendChild(d); powEls[p[0]] = d; });
-  var lastScore = -1, lastCoins = -1, popT = 0, lastMult = 1;
+  // v8: the top bar fills towards the next track change (road -> tunnel -> road ...): 0..10k first, then every 5k
+  function progress(s) { var P = L.C.TUBE_PERIOD, lo = s < L.C.TUBE_SCORE ? 0 : Math.floor(s / P) * P, hi = s < L.C.TUBE_SCORE ? L.C.TUBE_SCORE : lo + P; return Math.min(1, (s - lo) / (hi - lo)); }
+  var progEl = $('prog').firstChild, lastKmh = -1, lastScore = -1, lastCoins = -1, popT = 0, lastMult = 1;
   function hud() {
-    var s = Math.floor(game.score); if (s !== lastScore) { $('score').textContent = s; lastScore = s; }
-    if (game.coins !== lastCoins) { $('coins').textContent = game.coins; lastCoins = game.coins; }
+    var s = Math.floor(game.score); if (s !== lastScore) { setN('score', s); lastScore = s; progEl.style.transform = 'scaleX(' + progress(s).toFixed(4) + ')'; }
+    var kmh = Math.round(game.speed * 3.6); if (kmh !== lastKmh) { setN('spd', kmh); lastKmh = kmh; }
+    if (game.coins !== lastCoins) { setN('coins', game.coins); lastCoins = game.coins; }
     POW.forEach(function (p) { var v = game[p[1]], el = powEls[p[0]]; var on = v > 0; if (on === el.classList.contains('hidden')) el.classList.toggle('hidden', !on); if (on) el.lastChild.style.transform = 'scaleX(' + (v / p[2]).toFixed(3) + ')'; });
     var mu = Math.round(game.mult() * 100) / 100; if (mu !== lastMult) { lastMult = mu; $('mult').textContent = 'x' + mu; $('mult').classList.toggle('hidden', mu <= 1); }
     $('danger').classList.toggle('on', game.stumbleT > 0);
@@ -5763,8 +6075,8 @@ var RRRender = (function () {
   var HITSTOP = { stumble: 0.05, shieldpop: 0.06 }; /* v4: no hard freeze on crash; the eased slow-motion curve (RRLogic.crashFx) replaces it */
   // v7 Tube Run UI: a warning banner when the tunnel is announced, a 'swipe to switch walls' teach hint inside (until the player has switched twice); hop/slide hints are hidden there
   var tubeBannerT = 0, tubeHintT = 0;
-  function tubeBanner(sec) { tubeBannerT = sec; $('tubewarn').classList.remove('hidden'); }
-  function tubeEnter() { $('hint').classList.add('hidden'); app.hintT = 0; tutEl.className = 'tut hidden'; tutShown = ''; $('tubechip').classList.remove('hidden'); $('tubewarn').classList.add('hidden'); tubeBannerT = 0; tubeHintT = 7; $('tubehint').classList.remove('hidden'); }
+  function tubeBanner(sec, txt) { tubeBannerT = sec; $('tubewarn').lastChild.textContent = txt || 'TUBE RUN!'; $('tubewarn').classList.remove('hidden'); }
+  function tubeEnter() { $('hint').classList.add('hidden'); app.hintT = 0; tutEl.className = 'tut hidden'; tutShown = ''; $('tubechip').classList.remove('hidden'); $('tubewarn').classList.add('hidden'); tubeBannerT = 0; tubeHintT = game.tubeTall ? 9 : 7; $('tubehint').lastChild.textContent = game.tubeTall ? 'Swipe walls \u00b7 tap to hop low blocks' : 'Swipe to switch walls'; $('tubehint').classList.remove('hidden'); }
   function tubeUI(dt) {
     if (tubeBannerT > 0) { tubeBannerT -= dt; if (tubeBannerT <= 0) $('tubewarn').classList.add('hidden'); }
     if (tubeHintT > 0) { tubeHintT -= dt; if (tubeHintT <= 0 || game.slotChanges >= 2) { tubeHintT = 0; $('tubehint').classList.add('hidden'); } }
@@ -5779,14 +6091,16 @@ var RRRender = (function () {
       else if (e.type === 'power') { RRAudio.play(e.a === 'rocket' ? 'rocket' : 'power'); }
       else if (e.type === 'crash') { RRAudio.play('crash'); }
       else if (e.type === 'combo') { RRAudio.play('combo', e.a); if (e.a >= 2) pop('x' + (Math.round(game.mult() * 100) / 100)); }
-      else if (e.type === 'tubewarn') { RRAudio.play('power'); tubeBanner(3.2); }
+      else if (e.type === 'tubewarn') { RRAudio.play('power'); tubeBanner(3.2, game.tubeTall ? 'TALL TUBE \u00b7 HOP!' : 'TUBE RUN!'); }
       else if (e.type === 'tube') { RRAudio.play('whoosh'); tubeEnter(); }
+      else if (e.type === 'tubeexitwarn') { RRAudio.play('power'); tubeBanner(3, 'OPEN ROAD AHEAD'); }
+      else if (e.type === 'tubeout') { RRAudio.play('whoosh'); $('tubechip').classList.add('hidden'); $('tubehint').classList.add('hidden'); tubeHintT = 0; }
       else if (fb && fb.sfx) RRAudio.play(fb.sfx, e.a);
     }
     game.evN = 0;
   }
   // ---- clarity: teach-by-play prompts (first 3 runs) + incoming-hauler warning (every run) ----
-  var tutEl = $('tut'), warnEl = $('warn'), tutShown = '', TUT_ICON = { barrier: 'up', bar: 'down', hauler: 'side' };
+  var tutEl = $('tut'), warnEl = $('warn'), tutShown = '', TUT_ICON = { barrier: 'up', bar: 'down', hauler: 'side' }, TUT_TXT = { barrier: 'JUMP!', bar: 'SLIDE UNDER!', hauler: 'SWITCH LANE' };
   function clarity() {
     var want = '';
     if (game.mode === 'tube') { if (app.warn) { app.warn = false; warnEl.classList.add('hidden'); } if (tutShown) { tutShown = ''; app.tutKind = ''; tutEl.className = 'tut hidden'; } return; } // v7: no hop/slide teaching or hauler warning inside the tube
@@ -5796,7 +6110,7 @@ var RRRender = (function () {
     }
     var w = game.state === 'play' && game.threat() < 2.0; if (w !== app.warn) { app.warn = w; warnEl.classList.toggle('hidden', !w); }
     if (app.warn) want = ''; // hierarchy: the danger cue outranks the teaching cue (League clarity: preserve hierarchy, keep noise minimal)
-    if (want !== tutShown) { tutShown = want; app.tutKind = want; if (want) { tutEl.innerHTML = ICON[TUT_ICON[want]]; tutEl.className = 'tut ' + want; } else tutEl.className = 'tut hidden'; }
+    if (want !== tutShown) { tutShown = want; app.tutKind = want; if (want) { tutEl.innerHTML = ICON[TUT_ICON[want]] + '<b>' + TUT_TXT[want] + '</b>'; tutEl.className = 'tut ' + want; } else tutEl.className = 'tut hidden'; }
   }
   // ---- GPU timer (EXT_disjoint_timer_query_webgl2 when present; absent on iOS Safari -> CPU work + missed-frame detection) ----
   var gl = RRRender.renderer().getContext(), TX = RRRender.renderer().getContext().getExtension('EXT_disjoint_timer_query_webgl2'), tq = [], tqActive = null;
@@ -5826,7 +6140,7 @@ var RRRender = (function () {
       if (game.state === 'over') gameOver();
     } else if (app.screen === 'over') { app.overT += dt; drain(); app.crashT = (now - app.overAt) / 1000; var cf = L.crashFx(app.crashT); /* wall clock: the card appears on time even on a slow device */ app.crashTs = cf.ts; $('flash').style.opacity = cf.tint.toFixed(3); if (cf.done && !app.overShown) { app.overShown = true; show('over'); if (app.newBest) RRAudio.play('newbest'); } }
     else if (app.screen === 'title') { // attract: car idles on the road
-      game.x = game.px = Math.sin(now / 1400) * 0.4;
+      game.x = game.px = Math.sin(now / 1400) * 0.4; callouts();
     }
     if (app.hintT > 0) { app.hintT -= dt; if (app.hintT <= 0) $('hint').classList.add('hidden'); }
     if (popT > 0) { popT -= dt; if (popT <= 0) $('pops').style.opacity = 0; }
@@ -5842,18 +6156,18 @@ var RRRender = (function () {
   // test hooks (read-mostly; used by the Playwright rig and unit tests)
   window.RRUSH = {
     L: L, game: function () { return game; }, app: function () { return app; }, inputs: inputs, audio: RRAudio.state, render: RRRender.info, quality: RRRender.quality,
-    start: startRun, pause: pause, resume: resume, home: home,
+    showFreeze: function (i) { RRRender.showFreeze = i; }, setPaint: function (n) { RRRender.setPaint(n); }, start: startRun, pause: pause, resume: resume, home: home,
     setBot: function (on) { app.bot = !!on; }, gov: function () { return gov; }, feedback: RRFeedback, perfToggle: perfToggle, perfText: function () { return perfEl.textContent; },
-    frameStats: function () { return { work: stats(app.frameMs, app.frameN), iv: stats(app.ivMs, app.frameN), gpuMs: app.gpuMs }; }, setTier: function (t, sc) { app.lockQuality = true; gov.tier = t; gov.scale = sc || 1; RRRender.applyGov(gov); }, unlockTier: function () { app.lockQuality = false; }, carScreenBox: function () { return RRRender.carScreenBox(); }, carContrast: function () { return RRRender.carContrast(); }, carHalfWidth: function () { return RRRender.carHalfWidth(); }, carDrawables: function () { return RRRender.carDrawables(); }, carDraws: function () { return RRRender.carDraws(); }, carModel: function () { return RRRender.carModel(); }, nozzlesVisibleFrom: function (x, y, z) { return RRRender.nozzlesVisibleFrom(x, y, z); }, cameraPos: function () { return RRRender.cameraPos(); }, studio: function (o) { RRRender.studio(o); }, project: function (x, y, z) { return RRRender.project(x, y, z); }, storeOk: function () { return storeOk; },
-    music: { toggle: function () { return mtog.toggle(); }, on: function () { return mtog.on; }, log: RRAudio.musicLog, seek: RRAudio.seek, level: RRAudio.musicLevel, render: RRAudio.renderLoop, C: RRAudio.C, duckValue: RRAudio.duckValue, play: function (n) { RRAudio.play(n); } }, ensureAudio: function () { return RRAudio.ensureRunning(); }, version: 'v7',
+    frameStats: function () { return { work: stats(app.frameMs, app.frameN), iv: stats(app.ivMs, app.frameN), gpuMs: app.gpuMs }; }, setTier: function (t, sc) { app.lockQuality = true; gov.tier = t; gov.scale = sc || 1; RRRender.applyGov(gov); }, unlockTier: function () { app.lockQuality = false; }, carScreenBox: function () { return RRRender.carScreenBox(); }, carFx: function () { return RRRender.carFx(); }, carContrast: function () { return RRRender.carContrast(); }, carHalfWidth: function () { return RRRender.carHalfWidth(); }, carDrawables: function () { return RRRender.carDrawables(); }, carDraws: function () { return RRRender.carDraws(); }, carModel: function () { return RRRender.carModel(); }, nozzlesVisibleFrom: function (x, y, z) { return RRRender.nozzlesVisibleFrom(x, y, z); }, cameraPos: function () { return RRRender.cameraPos(); }, studio: function (o) { RRRender.studio(o); }, project: function (x, y, z) { return RRRender.project(x, y, z); }, storeOk: function () { return storeOk; },
+    music: { toggle: function () { return mtog.toggle(); }, on: function () { return mtog.on; }, log: RRAudio.musicLog, seek: RRAudio.seek, level: RRAudio.musicLevel, render: RRAudio.renderLoop, C: RRAudio.C, duckValue: RRAudio.duckValue, play: function (n) { RRAudio.play(n); } }, ensureAudio: function () { return RRAudio.ensureRunning(); }, version: 'v8',
     // v7 debug / test hooks (never used by real play): jump the score to N (the tunnel is announced by the normal rule), drop straight into the tunnel, run N logic seconds, make the car unbeatable for a screenshot or a soak
-    jumpScore: function (n) { game.score = n; }, forceTube: function (slot) { game.forceTube(slot || 0); }, mode: function () { return game.mode; },
+    jumpScore: function (n) { game.score = n; }, forceTube: function (slot, tall) { game.forceTube(slot || 0, !!tall); }, mode: function () { return game.mode; },
     advance: function (sec, bot) { var n = Math.round(sec / L.C.STEP); for (var i = 0; i < n && game.state === 'play'; i++) { if (bot && (i % 12) === 0) { var a = L.bot(game); if (a) game.input(a); } game.step(L.C.STEP); drain(); } hud(); clarity(); tubeUI(0); },
     invuln: function (on) { game.invulnT = on ? 1e9 : 0; }, setReduced: function (on) { app.reducedMotion = !!on; }
   };
 })();
 
 </script>
-<!-- Three.js r180 (c) 2010-2025 Three.js Authors, MIT License. Roadster Rush v7 is an original game: no third-party game or car-maker code, art, audio, music, logos or names are used. The music is an original composition generated in code (src/audio.js). -->
-<script>/* v6 offline install (from v4/v5): only on https (the published site); file:// and http keep working as a plain page */ if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js');</script>
+<!-- Three.js r180 (c) 2010-2025 Three.js Authors, MIT License. Roadster Rush v8 is an original game: no third-party game or car-maker code, art, audio, music, logos or names are used. The music is an original composition generated in code (src/audio.js). -->
+<script>/* v6 offline install (from v4/v5): only on https (the published site); file:// and http keep working as a plain page. v8: the worker is network-first, update checks bypass the HTTP cache, and a page that was served by an OLDER worker reloads itself once the new worker takes over (right away on the title screen, after the run otherwise) */ if ('serviceWorker' in navigator && location.protocol === 'https:') { var had = !!navigator.serviceWorker.controller; navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(function (r) { r.update && r.update(); }); navigator.serviceWorker.addEventListener('controllerchange', function () { if (!had) { had = true; return; } window.__rrReload = true; var a = window.RRUSH && RRUSH.app(); if (!a || a.screen !== 'play') location.reload(); }); }</script>
 </body></html>
